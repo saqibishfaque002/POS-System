@@ -62,7 +62,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Settings & Locations
     Route::middleware('can:is_admin')->group(function () {
-        Route::get('/settings', [\App\Http\Controllers\LocationController::class, 'index'])->name('settings.index');
+        Route::get('/settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('settings.index');
+        Route::post('/settings/group', [\App\Http\Controllers\SettingController::class, 'updateGroup'])->name('settings.group.update');
         
         Route::prefix('locations')->name('locations.')->group(function () {
             Route::post('/countries', [\App\Http\Controllers\LocationController::class, 'storeCountry'])->name('countries.store');
