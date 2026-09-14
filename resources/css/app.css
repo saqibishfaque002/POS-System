@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-erp-light text-slate-800 transition-colors duration-300;
+    }
+    
+    .dark body {
+        @apply bg-erp-dark text-[#f8fafc];
+    }
+}
+
+@layer components {
+    /* Legacy POS Classes */
+    .pos-card {
+        @apply bg-white border border-[#f4f4f5] rounded-2xl shadow-[0_15px_50px_-15px_rgba(0,0,0,0.05)] transition-all duration-300;
+    }
+    
+    .dark .pos-card {
+        @apply bg-[#1e293b]/50 backdrop-blur-md border-slate-700/50 shadow-none;
+    }
+
+    .pos-btn-primary {
+        @apply bg-gradient-to-r from-[#4f46e5] to-[#9333ea] text-white font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-all duration-300 active:scale-95 shadow-md shadow-indigo-500/30;
+    }
+
+    .dark .pos-btn-primary {
+        @apply bg-none bg-[#06b6d4] shadow-[0_0_15px_rgba(6,182,212,0.5)] hover:shadow-[0_0_25px_rgba(6,182,212,0.7)] text-slate-900;
+    }
+
+    .pos-input {
+        @apply w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all duration-300;
+    }
+
+    .dark .pos-input {
+        @apply bg-slate-800/50 border-slate-700 focus:ring-cyan-500/50 focus:border-cyan-500 text-white placeholder-slate-400;
+    }
+
+    .pos-muted {
+        @apply text-slate-500;
+    }
+
+    .dark .pos-muted {
+        @apply text-[#94a3b8];
+    }
+
+    /* New ERP Global Classes */
+    .dashboard-card {
+        @apply bg-erp-card-light rounded-[20px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-erp-border-light transition-colors duration-300;
+    }
+    .dark .dashboard-card {
+        @apply bg-erp-card-dark border-erp-border-dark shadow-none;
+    }
+
+    .icon-wrapper {
+        @apply w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300;
+    }
+
+    .badge-positive {
+        @apply bg-[#e6f7ec] text-[#17c964] px-2 py-1 rounded text-xs font-bold flex items-center justify-center;
+    }
+    .dark .badge-positive {
+        @apply bg-[#0a2e1d] text-[#17c964];
+    }
+
+    .badge-negative {
+        @apply bg-[#fee7ef] text-[#f31260] px-2 py-1 rounded text-xs font-bold flex items-center justify-center;
+    }
+    .dark .badge-negative {
+        @apply bg-[#36171d] text-[#f31260];
+    }
+}
