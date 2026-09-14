@@ -60,6 +60,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/variations/{variation}', [\App\Http\Controllers\CatalogController::class, 'destroyVariation'])->name('variations.destroy');
     });
 
+    // User Management
+    Route::middleware('can:is_admin')->prefix('users')->name('users.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\UserController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\UserController::class, 'store'])->name('store');
+        Route::put('/{user}', [\App\Http\Controllers\UserController::class, 'update'])->name('update');
+        Route::delete('/{user}', [\App\Http\Controllers\UserController::class, 'destroy'])->name('destroy');
+    });
+
     // Settings & Locations
     Route::middleware('can:is_admin')->group(function () {
         Route::get('/settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('settings.index');
@@ -77,6 +85,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/cities', [\App\Http\Controllers\LocationController::class, 'storeCity'])->name('cities.store');
             Route::put('/cities/{city}', [\App\Http\Controllers\LocationController::class, 'updateCity'])->name('cities.update');
             Route::delete('/cities/{city}', [\App\Http\Controllers\LocationController::class, 'destroyCity'])->name('cities.destroy');
+        });
+
+        Route::prefix('restaurant')->name('restaurant.')->group(function () {
+            Route::post('/companies', [\App\Http\Controllers\RestaurantSetupController::class, 'storeCompany'])->name('companies.store');
+            Route::put('/companies/{company}', [\App\Http\Controllers\RestaurantSetupController::class, 'updateCompany'])->name('companies.update');
+            Route::delete('/companies/{company}', [\App\Http\Controllers\RestaurantSetupController::class, 'destroyCompany'])->name('companies.destroy');
+
+            Route::post('/branches', [\App\Http\Controllers\RestaurantSetupController::class, 'storeBranch'])->name('branches.store');
+            Route::put('/branches/{branch}', [\App\Http\Controllers\RestaurantSetupController::class, 'updateBranch'])->name('branches.update');
+            Route::delete('/branches/{branch}', [\App\Http\Controllers\RestaurantSetupController::class, 'destroyBranch'])->name('branches.destroy');
+
+            Route::post('/floors', [\App\Http\Controllers\RestaurantSetupController::class, 'storeFloor'])->name('floors.store');
+            Route::put('/floors/{floor}', [\App\Http\Controllers\RestaurantSetupController::class, 'updateFloor'])->name('floors.update');
+            Route::delete('/floors/{floor}', [\App\Http\Controllers\RestaurantSetupController::class, 'destroyFloor'])->name('floors.destroy');
+
+            Route::post('/tables', [\App\Http\Controllers\RestaurantSetupController::class, 'storeTable'])->name('tables.store');
+            Route::put('/tables/{table}', [\App\Http\Controllers\RestaurantSetupController::class, 'updateTable'])->name('tables.update');
+            Route::delete('/tables/{table}', [\App\Http\Controllers\RestaurantSetupController::class, 'destroyTable'])->name('tables.destroy');
         });
     });
 });

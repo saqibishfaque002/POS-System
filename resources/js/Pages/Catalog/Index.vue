@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import DataTable from '@/Components/DataTable.vue';
 
@@ -39,6 +39,18 @@ const tabs = [
     { id: 'propertyItems', label: 'Property Items' },
     { id: 'variations', label: 'Variations' },
 ];
+
+const expandedCategories = ref({
+    catalog: false,
+});
+
+watch(activeTab, (newTab) => {
+    if (tabs.some(t => t.id === newTab)) expandedCategories.value.catalog = true;
+}, { immediate: true });
+
+const toggleCategory = (cat) => {
+    expandedCategories.value[cat] = !expandedCategories.value[cat];
+};
 
 const tabData = computed(() => {
     switch (activeTab.value) {
@@ -210,14 +222,24 @@ const deleteItem = (item) => {
             <div class="flex flex-col md:flex-row gap-6">
                 <!-- Sidebar Tabs -->
                 <aside class="w-full md:w-64 shrink-0">
-                    <div class="dashboard-card p-2 space-y-1">
-                        <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" 
-                            :class="[
-                                'w-full text-left px-4 py-3 rounded-xl transition-colors text-sm font-bold',
-                                activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                            ]">
-                            {{ tab.label }}
-                        </button>
+                    <div class="dashboard-card p-4 space-y-6">
+                        <div>
+                            <button @click="toggleCategory('catalog')" type="button" class="w-full flex justify-between items-center text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2 px-2 focus:outline-none">
+                                <span>Catalog Management</span>
+                                <svg :class="{'rotate-180': expandedCategories.catalog}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <div v-show="expandedCategories.catalog" class="space-y-1">
+                                <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" 
+                                    :class="[
+                                        'w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
+                                        activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    ]">
+                                    {{ tab.label }}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </aside>
 

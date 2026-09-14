@@ -6,6 +6,10 @@ use App\Models\Setting;
 use App\Models\Country;
 use App\Models\Province;
 use App\Models\City;
+use App\Models\Company;
+use App\Models\Branch;
+use App\Models\Floor;
+use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -14,14 +18,27 @@ class SettingController extends Controller
 {
     public function index()
     {
-        // Load settings as key-value pairs
-        $settings = Setting::pluck('value', 'key')->toArray();
+        $user = auth()->user();
+        $isAdmin = in_array($user->role, ['admin', 'manager']);
+        $branchIds = $isAdmin ? [] : $user->branches()->pluck('branches.id')->toArray();
 
         return Inertia::render('Settings/Index', [
             'countries' => Country::orderBy('name')->get(),
             'provinces' => Province::with('country')->orderBy('name')->get(),
             'cities' => City::with('province.country')->orderBy('name')->get(),
-            'settings' => $settings,
+            'companies' => Company::orderBy('name')->get(),
+            'branches' => $isAdmin 
+                ? Branch::with(['company', 'city.province.country'])->orderBy('name')->get()
+                : Branch::with(['company', 'city.province.country'])->whereIn('id', $branchIds)->orderBy('name')->get(),
+            'floors' => $isAdmin
+                ? Floor::with('branch.company')->orderBy('name')->get()
+                : Floor::with('branch.company')->whereIn('branch_id', $branchIds)->orderBy('name')->get(),
+            'tables' => $isAdmin
+                ? Table::with('floor.branch')->orderBy('name')->get()
+                : Table::with('floor.branch')->whereHas('floor', function($q) use ($branchIds) {
+                    $q->whereIn('branch_id', $branchIds);
+                })->orderBy('name')->get(),
+            'settings' => Setting::pluck('value', 'key')->toArray(),
         ]);
     }
 
