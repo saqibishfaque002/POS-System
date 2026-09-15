@@ -105,6 +105,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/tables/{table}', [\App\Http\Controllers\RestaurantSetupController::class, 'destroyTable'])->name('tables.destroy');
         });
     });
+
+    // Trade & Procurement
+    Route::prefix('trade')->name('trade.')->group(function () {
+        Route::get('/purchase-requests', [\App\Http\Controllers\PurchaseRequestController::class, 'index'])->name('purchase-requests.index');
+        Route::post('/purchase-requests', [\App\Http\Controllers\PurchaseRequestController::class, 'store'])->name('purchase-requests.store');
+        Route::get('/purchase-requests/{purchaseRequest}', [\App\Http\Controllers\PurchaseRequestController::class, 'show'])->name('purchase-requests.show');
+        Route::delete('/purchase-requests/{purchaseRequest}', [\App\Http\Controllers\PurchaseRequestController::class, 'destroy'])->name('purchase-requests.destroy');
+        
+        // Placeholders for other docs
+        Route::get('/purchase-orders', [\App\Http\Controllers\PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+        Route::get('/good-received-notes', [\App\Http\Controllers\GoodReceivedNoteController::class, 'index'])->name('good-received-notes.index');
+        Route::get('/purchase-invoices', [\App\Http\Controllers\PurchaseInvoiceController::class, 'index'])->name('purchase-invoices.index');
+        Route::get('/purchase-returns', [\App\Http\Controllers\PurchaseReturnController::class, 'index'])->name('purchase-returns.index');
+        Route::get('/sale-invoices', [\App\Http\Controllers\SaleInvoiceController::class, 'index'])->name('sale-invoices.index');
+        Route::get('/sale-returns', [\App\Http\Controllers\SaleReturnController::class, 'index'])->name('sale-returns.index');
+    });
 });
 
 Route::get('/', function () {
