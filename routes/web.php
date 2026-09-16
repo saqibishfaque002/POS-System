@@ -60,6 +60,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/variations/{variation}', [\App\Http\Controllers\CatalogController::class, 'destroyVariation'])->name('variations.destroy');
     });
 
+    // Ingredients Management
+    Route::middleware('can:is_admin')->prefix('ingredients')->name('ingredients.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\IngredientController::class, 'index'])->name('index');
+        
+        // Ingredient Units
+        Route::post('/ingredient-units', [\App\Http\Controllers\IngredientController::class, 'storeIngredientUnit'])->name('ingredient-units.store');
+        Route::put('/ingredient-units/{ingredientUnit}', [\App\Http\Controllers\IngredientController::class, 'updateIngredientUnit'])->name('ingredient-units.update');
+        Route::delete('/ingredient-units/{ingredientUnit}', [\App\Http\Controllers\IngredientController::class, 'destroyIngredientUnit'])->name('ingredient-units.destroy');
+
+        // Ingredient Groups
+        Route::post('/ingredient-groups', [\App\Http\Controllers\IngredientController::class, 'storeIngredientGroup'])->name('ingredient-groups.store');
+        Route::put('/ingredient-groups/{ingredientGroup}', [\App\Http\Controllers\IngredientController::class, 'updateIngredientGroup'])->name('ingredient-groups.update');
+        Route::delete('/ingredient-groups/{ingredientGroup}', [\App\Http\Controllers\IngredientController::class, 'destroyIngredientGroup'])->name('ingredient-groups.destroy');
+
+        // Ingredient Items
+        Route::post('/ingredient-items', [\App\Http\Controllers\IngredientController::class, 'storeIngredientItem'])->name('ingredient-items.store');
+        Route::put('/ingredient-items/{ingredientItem}', [\App\Http\Controllers\IngredientController::class, 'updateIngredientItem'])->name('ingredient-items.update');
+        Route::delete('/ingredient-items/{ingredientItem}', [\App\Http\Controllers\IngredientController::class, 'destroyIngredientItem'])->name('ingredient-items.destroy');
+    });
+
     // User Management
     Route::middleware('can:is_admin')->prefix('users')->name('users.')->group(function () {
         Route::get('/', [\App\Http\Controllers\UserController::class, 'index'])->name('index');

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 
 const props = defineProps({
     activeTab: {
@@ -13,6 +13,7 @@ const emit = defineEmits(['update:activeTab']);
 
 const expandedCategories = ref({
     catalog: false,
+    ingredients: false,
     purchase: false,
 });
 
@@ -31,6 +32,8 @@ onMounted(() => {
     } else {
         if (route().current('trade.*')) {
             expandedCategories.value.purchase = true;
+        } else if (route().current('ingredients.*')) {
+            expandedCategories.value.ingredients = true;
         } else {
             expandedCategories.value.catalog = true;
         }
@@ -50,11 +53,16 @@ const toggleCategory = (cat) => {
 };
 
 const tabs = [
-    { id: 'foodGroups', label: 'Food Groups' },
-    { id: 'foodItems', label: 'Food Items' },
-    { id: 'propertyGroups', label: 'Property Groups' },
-    { id: 'propertyItems', label: 'Property Items' },
-    { id: 'variations', label: 'Variations' },
+    { id: 'foodGroups', label: 'Food Groups', route: 'catalog.index' },
+    { id: 'foodItems', label: 'Food Items', route: 'catalog.index' },
+    { id: 'propertyGroups', label: 'Property Groups', route: 'catalog.index' },
+    { id: 'propertyItems', label: 'Property Items', route: 'catalog.index' },
+    { id: 'variations', label: 'Variations', route: 'catalog.index' },
+];
+const ingredientTabs = [
+    { id: 'ingredientUnits', label: 'Ingredient Units', route: 'ingredients.index' },
+    { id: 'ingredientGroups', label: 'Ingredient Groups', route: 'ingredients.index' },
+    { id: 'ingredientItems', label: 'Ingredient Items', route: 'ingredients.index' },
 ];
 </script>
 
@@ -71,7 +79,7 @@ const tabs = [
                 </button>
                 <div v-show="expandedCategories.catalog" class="space-y-1">
                     <template v-if="route().current('catalog.index')">
-                        <button v-for="tab in tabs" :key="tab.id" @click="emit('update:activeTab', tab.id)" 
+                        <button v-for="tab in tabs" :key="tab.id" @click="tab.route === 'catalog.index' ? emit('update:activeTab', tab.id) : router.get(route(tab.route))" 
                             :class="[
                                 'w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
                                 activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -80,8 +88,34 @@ const tabs = [
                         </button>
                     </template>
                     <template v-else>
-                        <!-- If on a Trade page, clicking Catalog tabs should redirect to Catalog -->
-                        <Link v-for="tab in tabs" :key="'link-'+tab.id" :href="route('catalog.index')" class="block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <!-- If on a Trade page or Ingredients page, clicking Catalog tabs should redirect to Catalog -->
+                        <Link v-for="tab in tabs" :key="'link-'+tab.id" :href="route(tab.route)" class="block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
+                            {{ tab.label }}
+                        </Link>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Ingredients Management -->
+            <div>
+                <button @click="toggleCategory('ingredients')" type="button" class="w-full flex justify-between items-center text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2 px-2 focus:outline-none">
+                    <span>Manage Ingredients</span>
+                    <svg :class="{'rotate-180': expandedCategories.ingredients}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <div v-show="expandedCategories.ingredients" class="space-y-1">
+                    <template v-if="route().current('ingredients.index')">
+                        <button v-for="tab in ingredientTabs" :key="tab.id" @click="emit('update:activeTab', tab.id)" 
+                            :class="[
+                                'w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
+                                activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                            ]">
+                            {{ tab.label }}
+                        </button>
+                    </template>
+                    <template v-else>
+                        <Link v-for="tab in ingredientTabs" :key="'link-'+tab.id" :href="route(tab.route)" class="block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
                             {{ tab.label }}
                         </Link>
                     </template>
