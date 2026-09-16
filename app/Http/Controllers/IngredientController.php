@@ -66,6 +66,7 @@ class IngredientController extends Controller
             'conversion_qty' => 'required|numeric',
             'consumption_unit_id' => 'required|exists:ingredient_units,id',
             'consumption_qty' => 'required|numeric',
+            'reorder_level' => 'required|numeric',
             'is_active' => 'boolean'
         ]);
         if (!isset($validated['is_active'])) $validated['is_active'] = false;
@@ -82,6 +83,7 @@ class IngredientController extends Controller
             'conversion_qty' => 'required|numeric',
             'consumption_unit_id' => 'required|exists:ingredient_units,id',
             'consumption_qty' => 'required|numeric',
+            'reorder_level' => 'required|numeric',
             'is_active' => 'boolean'
         ]);
         if (!isset($validated['is_active'])) $validated['is_active'] = false;

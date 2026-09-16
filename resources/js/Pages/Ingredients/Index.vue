@@ -72,6 +72,7 @@ const columns = computed(() => {
             { key: 'conversion_qty', label: 'Conver. Qty' },
             { key: 'consumption_unit_id', label: 'Consumption Unit' },
             { key: 'consumption_qty', label: 'Consmp. Qty' },
+            { key: 'reorder_level', label: 'Reorder Level' },
             { key: 'base_price', label: 'Base Price' },
             { key: 'is_active', label: 'Active' },
         ];
@@ -103,6 +104,7 @@ const formFields = computed(() => {
             { key: 'conversion_qty', label: 'Conver. Qty', type: 'number' },
             { key: 'consumption_unit_id', label: 'Consumption Unit', type: 'select', options: props.ingredientUnits.map(u => ({value: u.id, label: u.name})) },
             { key: 'consumption_qty', label: 'Consmp. Qty', type: 'number' },
+            { key: 'reorder_level', label: 'Reorder Level (Consumption Unit)', type: 'number' },
             { key: 'base_price', label: 'Base Price', type: 'number' },
             { key: 'description', label: 'Description', type: 'text', required: false },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
@@ -119,6 +121,8 @@ const openModal = (item = null) => {
             initialData[field.key] = item ? !!item[field.key] : true;
         } else if (field.key === 'conversion_qty' || field.key === 'consumption_qty') {
             initialData[field.key] = item ? item[field.key] : 1;
+        } else if (field.key === 'reorder_level') {
+            initialData[field.key] = item ? item[field.key] : 0;
         } else {
             initialData[field.key] = item ? item[field.key] : '';
         }

@@ -11,7 +11,7 @@ class IngredientItem extends Model
 
     protected $fillable = [
         'ingredient_group_id', 'name', 'base_price', 'description', 'is_active',
-        'purchase_unit_id', 'conversion_qty', 'consumption_unit_id', 'consumption_qty'
+        'purchase_unit_id', 'conversion_qty', 'consumption_unit_id', 'consumption_qty', 'reorder_level'
     ];
 
     public function group()
