@@ -29,10 +29,13 @@ onMounted(() => {
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         isDark.value = true;
         document.documentElement.classList.add('dark');
+    } else {
+        isDark.value = false;
+        document.documentElement.classList.remove('dark');
     }
 });
 
-const activeTab = ref('foodGroups');
+const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || 'foodGroups');
 const tabs = [
     { id: 'foodGroups', label: 'Food Groups' },
     { id: 'foodItems', label: 'Food Items' },

@@ -89,7 +89,7 @@ const ingredientTabs = [
                     </template>
                     <template v-else>
                         <!-- If on a Trade page or Ingredients page, clicking Catalog tabs should redirect to Catalog -->
-                        <Link v-for="tab in tabs" :key="'link-'+tab.id" :href="route(tab.route)" class="block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <Link v-for="tab in tabs" :key="'link-'+tab.id" :href="route(tab.route, {tab: tab.id})" class="block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
                             {{ tab.label }}
                         </Link>
                     </template>
@@ -115,7 +115,7 @@ const ingredientTabs = [
                         </button>
                     </template>
                     <template v-else>
-                        <Link v-for="tab in ingredientTabs" :key="'link-'+tab.id" :href="route(tab.route)" class="block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <Link v-for="tab in ingredientTabs" :key="'link-'+tab.id" :href="route(tab.route, {tab: tab.id})" class="block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
                             {{ tab.label }}
                         </Link>
                     </template>
