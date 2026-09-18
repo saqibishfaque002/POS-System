@@ -131,6 +131,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/purchase-requests', [\App\Http\Controllers\PurchaseRequestController::class, 'index'])->name('purchase-requests.index');
         Route::post('/purchase-requests', [\App\Http\Controllers\PurchaseRequestController::class, 'store'])->name('purchase-requests.store');
         Route::get('/purchase-requests/{purchaseRequest}', [\App\Http\Controllers\PurchaseRequestController::class, 'show'])->name('purchase-requests.show');
+        Route::patch('/purchase-requests/{purchaseRequest}/status', [\App\Http\Controllers\PurchaseRequestController::class, 'updateStatus'])->name('purchase-requests.status');
         Route::delete('/purchase-requests/{purchaseRequest}', [\App\Http\Controllers\PurchaseRequestController::class, 'destroy'])->name('purchase-requests.destroy');
         
         // Placeholders for other docs

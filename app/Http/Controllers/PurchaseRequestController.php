@@ -24,7 +24,8 @@ class PurchaseRequestController extends Controller
         return Inertia::render('Trade/PurchaseRequests/Index', [
             'purchaseRequests' => $query->latest()->get(),
             'branches' => $isAdmin ? Branch::orderBy('name')->get() : $user->branches,
-            'items' => FoodItem::where('is_active', true)->orderBy('name')->get(),
+            'items' => \App\Models\IngredientItem::with('purchaseUnit')->where('is_active', true)->orderBy('name')->get(),
+            'units' => \App\Models\IngredientUnit::where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -35,20 +36,16 @@ class PurchaseRequestController extends Controller
             'date' => 'required|date',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:food_items,id',
+            'items.*.item_id' => 'required|exists:ingredient_items,id',
+            'items.*.unit_id' => 'required|exists:ingredient_units,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
         $lastDoc = PurchaseRequest::where('branch_id', $validated['branch_id'])->latest('id')->first();
         $sequence = $lastDoc ? intval(explode('-', $lastDoc->document_number)[2] ?? 0) + 1 : 1;
         $docNumber = 'PR-' . $validated['branch_id'] . '-' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
 
-        $totalAmount = 0;
-        foreach ($validated['items'] as &$item) {
-            $item['subtotal'] = $item['quantity'] * $item['unit_price'];
-            $totalAmount += $item['subtotal'];
-        }
+        $totalAmount = 0; // PRs may not have a total amount initially now
 
         $pr = PurchaseRequest::create([
             'branch_id' => $validated['branch_id'],
@@ -57,12 +54,23 @@ class PurchaseRequestController extends Controller
             'notes' => $validated['notes'],
             'total_amount' => $totalAmount,
             'created_by' => auth()->id(),
-            'status' => 'approved' // Automatically approved for now
+            'status' => 'draft'
         ]);
 
         $pr->items()->createMany($validated['items']);
 
         return back()->with('success', 'Purchase Request created successfully.');
+    }
+
+    public function updateStatus(Request $request, PurchaseRequest $purchaseRequest)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:draft,pending_approval,approved,rejected'
+        ]);
+
+        $purchaseRequest->update(['status' => $validated['status']]);
+
+        return back()->with('success', 'Purchase Request status updated.');
     }
 
     public function destroy(PurchaseRequest $purchaseRequest)

@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { Head, useForm, Link } from '@inertiajs/vue3';
+import { ref, computed, onMounted } from 'vue';
+import { Head, useForm, Link, router } from '@inertiajs/vue3';
 import DashboardLayout from '@/Pages/Dashboard.vue'; // We can just use a simple layout or rely on Dashboard
 import DataTable from '@/Components/DataTable.vue';
 import InventorySidebar from '@/Components/InventorySidebar.vue';
@@ -9,6 +9,30 @@ const props = defineProps({
     purchaseRequests: Array,
     branches: Array,
     items: Array,
+    units: Array,
+});
+
+const isDark = ref(false);
+
+const toggleTheme = () => {
+    isDark.value = !isDark.value;
+    if (isDark.value) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    }
+};
+
+onMounted(() => {
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        isDark.value = true;
+        document.documentElement.classList.add('dark');
+    } else {
+        isDark.value = false;
+        document.documentElement.classList.remove('dark');
+    }
 });
 
 const isModalOpen = ref(false);
@@ -17,12 +41,12 @@ const form = useForm({
     date: new Date().toISOString().split('T')[0],
     notes: '',
     items: [
-        { item_id: '', quantity: 1, unit_price: 0 }
+        { item_id: '', quantity: 1, unit_id: '' }
     ]
 });
 
 const addItem = () => {
-    form.items.push({ item_id: '', quantity: 1, unit_price: 0 });
+    form.items.push({ item_id: '', quantity: 1, unit_id: '' });
 };
 
 const removeItem = (index) => {
@@ -40,6 +64,29 @@ const submitForm = () => {
             isModalOpen.value = false;
         }
     });
+};
+
+const onItemSelect = (item) => {
+    const ingredientItem = props.items.find(i => i.id === item.item_id);
+    if (ingredientItem) {
+        item.unit_id = ingredientItem.purchase_unit_id;
+    }
+};
+
+const changeStatus = (pr, status) => {
+    if (confirm(`Are you sure you want to change status to ${status.replace('_', ' ').toUpperCase()}?`)) {
+        router.patch(route('trade.purchase-requests.status', pr.id), { status }, {
+            preserveScroll: true
+        });
+    }
+};
+
+const deletePr = (pr) => {
+    if (confirm('Are you sure you want to delete this Purchase Request?')) {
+        router.delete(route('trade.purchase-requests.destroy', pr.id), {
+            preserveScroll: true
+        });
+    }
 };
 
 const columns = computed(() => [
@@ -66,6 +113,15 @@ const columns = computed(() => [
                         </Link>
                     </div>
                 </div>
+                
+                <button @click="toggleTheme" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <svg v-if="!isDark" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#06b6d4]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </button>
             </header>
 
             <div class="flex flex-col md:flex-row gap-6">
@@ -81,7 +137,25 @@ const columns = computed(() => [
                                 + Create PR
                             </button>
                         </div>
-                        <DataTable :data="purchaseRequests" :columns="columns" />
+                        <DataTable :data="purchaseRequests" :columns="columns">
+                            <template #cell-status="{ item }">
+                                <span class="px-2 py-1 rounded-full text-xs font-bold"
+                                      :class="{
+                                        'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300': item.status === 'draft',
+                                        'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400': item.status === 'pending_approval',
+                                        'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400': item.status === 'approved',
+                                        'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400': item.status === 'rejected'
+                                      }">
+                                    {{ item.status.replace('_', ' ').toUpperCase() }}
+                                </span>
+                            </template>
+                            <template #row-actions="{ item }">
+                                <button v-if="item.status === 'draft'" @click="changeStatus(item, 'pending_approval')" class="text-yellow-600 hover:text-yellow-800 mr-3 text-xs font-bold transition-colors">Submit</button>
+                                <button v-if="item.status === 'pending_approval'" @click="changeStatus(item, 'approved')" class="text-green-600 hover:text-green-800 mr-3 text-xs font-bold transition-colors">Approve</button>
+                                <button v-if="item.status === 'pending_approval'" @click="changeStatus(item, 'rejected')" class="text-red-600 hover:text-red-800 mr-3 text-xs font-bold transition-colors">Reject</button>
+                                <button @click="deletePr(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs font-bold transition-colors">Delete</button>
+                            </template>
+                        </DataTable>
                     </div>
                 </main>
             </div>
@@ -114,20 +188,20 @@ const columns = computed(() => [
                                     + Add Item
                                 </button>
                             </div>
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                                        <th class="pb-3 w-1/2">Food Item</th>
-                                        <th class="pb-3 w-1/6">Quantity</th>
-                                        <th class="pb-3 w-1/6">Unit Price</th>
-                                        <th class="pb-3 w-1/6">Subtotal</th>
-                                        <th class="pb-3 w-8"></th>
-                                    </tr>
-                                </thead>
+                            <div class="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-slate-50 dark:bg-slate-900/50 backdrop-blur-sm z-10">
+                                            <th class="pb-3 w-1/2">Ingredient Item</th>
+                                            <th class="pb-3 w-1/4">Quantity</th>
+                                            <th class="pb-3 w-1/4">Unit</th>
+                                            <th class="pb-3 w-8"></th>
+                                        </tr>
+                                    </thead>
                                 <tbody>
                                     <tr v-for="(item, index) in form.items" :key="index" class="border-b border-slate-100 dark:border-slate-800 last:border-0">
                                         <td class="py-3 pr-3">
-                                            <select v-model="item.item_id" class="pos-input w-full !py-1.5" required>
+                                            <select v-model="item.item_id" @change="onItemSelect(item)" class="pos-input w-full !py-1.5" required>
                                                 <option value="" disabled>Select Item</option>
                                                 <option v-for="fi in items" :key="fi.id" :value="fi.id">{{ fi.name }}</option>
                                             </select>
@@ -136,10 +210,10 @@ const columns = computed(() => [
                                             <input type="number" step="0.01" v-model="item.quantity" class="pos-input w-full !py-1.5 text-center" required>
                                         </td>
                                         <td class="py-3 pr-3">
-                                            <input type="number" step="0.01" v-model="item.unit_price" class="pos-input w-full !py-1.5 text-right" required>
-                                        </td>
-                                        <td class="py-3 text-sm text-slate-700 dark:text-slate-300 font-semibold text-right">
-                                            ${{ (item.quantity * item.unit_price).toFixed(2) }}
+                                            <select v-model="item.unit_id" class="pos-input w-full !py-1.5" required>
+                                                <option value="" disabled>Select Unit</option>
+                                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
+                                            </select>
                                         </td>
                                         <td class="py-3 text-right">
                                             <button type="button" @click="removeItem(index)" class="text-red-400 hover:text-red-600 transition-colors">
@@ -151,6 +225,7 @@ const columns = computed(() => [
                                     </tr>
                                 </tbody>
                             </table>
+                            </div>
                         </div>
 
                         <div class="mb-6">

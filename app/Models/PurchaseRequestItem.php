@@ -17,6 +17,6 @@ class PurchaseRequestItem extends Model
     }
 
     public function item() {
-        return $this->belongsTo(FoodItem::class, 'item_id');
+        return $this->belongsTo(IngredientItem::class, 'item_id');
     }
 }

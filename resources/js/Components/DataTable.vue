@@ -61,8 +61,10 @@ const filteredData = computed(() => {
                             <slot :name="'cell-'+col.key" :item="row">{{ row[col.key] }}</slot>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
-                            <button @click="emit('edit', row)" class="text-indigo-600 hover:text-indigo-900 dark:text-[#06b6d4] dark:hover:text-cyan-300 mr-4 transition-colors">Edit</button>
-                            <button @click="emit('delete', row)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors">Delete</button>
+                            <slot name="row-actions" :item="row">
+                                <button @click="emit('edit', row)" class="text-indigo-600 hover:text-indigo-900 dark:text-[#06b6d4] dark:hover:text-cyan-300 mr-4 transition-colors">Edit</button>
+                                <button @click="emit('delete', row)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors">Delete</button>
+                            </slot>
                         </td>
                     </tr>
                     <tr v-if="!filteredData || !filteredData.length">
