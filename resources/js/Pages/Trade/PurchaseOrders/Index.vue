@@ -304,7 +304,8 @@ const formTotal = computed(() => {
                                 <button v-if="item.status === 'draft'" @click="changeStatus(item, 'issued')" class="text-blue-600 hover:text-blue-800 mr-3 text-xs font-bold transition-colors">Issue</button>
                                 <button v-if="item.status === 'issued'" @click="changeStatus(item, 'completed')" class="text-green-600 hover:text-green-800 mr-3 text-xs font-bold transition-colors">Complete</button>
                                 <button v-if="item.status === 'issued'" @click="changeStatus(item, 'cancelled')" class="text-red-600 hover:text-red-800 mr-3 text-xs font-bold transition-colors">Cancel</button>
-                                <button v-if="item.status === 'draft'" @click="deletePo(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs font-bold transition-colors">Delete</button>
+                                <button v-if="item.status === 'draft'" @click="deletePo(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs font-bold transition-colors mr-3">Delete</button>
+                                <a :href="route('trade.purchase-orders.print', item.id)" target="_blank" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 text-xs font-bold transition-colors">Print</a>
                             </template>
                         </DataTable>
                     </div>
@@ -314,10 +315,20 @@ const formTotal = computed(() => {
             <!-- Modal Form -->
             <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                 <div class="dashboard-card w-full max-w-[95vw] lg:max-w-7xl p-6 max-h-[90vh] overflow-y-auto">
-                    <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">{{ editingPo ? 'Edit' : 'New' }} Purchase Order</h2>
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-slate-800 dark:text-white">{{ editingPo ? 'Edit' : 'New' }} Purchase Order</h2>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Link PR?</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" v-model="isPrLinked" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                                <span class="ml-2 text-sm font-medium text-slate-900 dark:text-slate-300">{{ isPrLinked ? 'Yes' : 'No' }}</span>
+                            </label>
+                        </div>
+                    </div>
                     
                     <form @submit.prevent="submitForm" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                             
                             <!-- Branch -->
                             <div>
@@ -327,29 +338,16 @@ const formTotal = computed(() => {
                                     <option v-for="branch in branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
                                 </select>
                             </div>
-
-                            <!-- Link PR Group (Col Span 2) -->
-                            <div class="col-span-1 md:col-span-2 flex gap-4">
-                                <div class="shrink-0">
-                                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Link PR?</label>
-                                    <div class="flex items-center h-[38px]">
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" v-model="isPrLinked" class="sr-only peer">
-                                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
-                                            <span class="ml-3 text-sm font-medium text-slate-900 dark:text-slate-300">{{ isPrLinked ? 'Yes' : 'No' }}</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                
-                                <div v-if="isPrLinked" class="flex-1">
-                                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select PR</label>
-                                    <select v-model="form.reference_id" @change="onPrSelect" class="pos-input w-full" :disabled="!form.branch_id">
-                                        <option value="">-- Select PR --</option>
-                                        <option v-for="pr in filteredPrs" :key="pr.id" :value="pr.id">{{ pr.document_number }}</option>
-                                    </select>
-                                    <p v-if="!form.branch_id" class="text-xs text-orange-500 mt-1">Select branch first</p>
-                                </div>
+                            
+                            <div v-if="isPrLinked">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select PR</label>
+                                <select v-model="form.reference_id" @change="onPrSelect" class="pos-input w-full" :disabled="!form.branch_id">
+                                    <option value="">-- Select PR --</option>
+                                    <option v-for="pr in filteredPrs" :key="pr.id" :value="pr.id">{{ pr.document_number }}</option>
+                                </select>
+                                <p v-if="!form.branch_id" class="text-xs text-orange-500 mt-1">Select branch first</p>
                             </div>
+                            
 
                             <!-- Date (Disabled) -->
                             <div>
@@ -385,16 +383,16 @@ const formTotal = computed(() => {
                                 <table class="w-full text-left border-collapse">
                                     <thead>
                                         <tr class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-slate-50 dark:bg-slate-900/50 backdrop-blur-sm z-10">
-                                            <th class="pb-3 w-48">Ingredient Item</th>
+                                            <th class="pb-3 w-48 text-center">Ingredient Item</th>
                                             <th v-if="isPrLinked" class="pb-3 w-20 text-center">PR Qty</th>
-                                            <th class="pb-3 w-24">PO Qty</th>
-                                            <th class="pb-3 w-24">Unit</th>
-                                            <th class="pb-3 w-24">Rate</th>
-                                            <th class="pb-3 w-24 text-right">Amount</th>
-                                            <th class="pb-3 w-20">Tax %</th>
-                                            <th class="pb-3 w-24 text-right">Tax Amt</th>
-                                            <th class="pb-3 w-24 text-right">Total</th>
-                                            <th class="pb-3 w-32 pl-3">Conv Unit</th>
+                                            <th class="pb-3 w-24 text-center">PO Qty</th>
+                                            <th class="pb-3 w-24 text-center">Unit</th>
+                                            <th class="pb-3 w-24 text-center">Rate</th>
+                                            <th class="pb-3 w-24 text-center">Amount</th>
+                                            <th class="pb-3 w-24 text-center">Tax %</th>
+                                            <th class="pb-3 w-24 text-center">Tax Amt</th>
+                                            <th class="pb-3 w-24 text-center">Total</th>
+                                            <th class="pb-3 w-32 pl-3 text-center">Conv Unit</th>
                                             <th class="pb-3 w-8"></th>
                                         </tr>
                                     </thead>
@@ -410,7 +408,7 @@ const formTotal = computed(() => {
                                             {{ item.pr_qty }}
                                         </td>
                                         <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.quantity" @input="calculateTaxAndTotal(item)" class="pos-input w-full !py-1.5 !px-2 text-center text-sm" required>
+                                            <input type="number" step="0.01" v-model="item.quantity" @input="calculateTaxAndTotal(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
                                         </td>
                                         <td class="py-3 pr-2">
                                             <select v-model="item.unit_id" class="pos-input w-full !py-1.5 !px-2 text-sm" required>
@@ -421,19 +419,20 @@ const formTotal = computed(() => {
                                         <td class="py-3 pr-2">
                                             <input type="number" step="0.01" v-model="item.unit_price" @input="calculateTaxAndTotal(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
                                         </td>
-                                        <td class="py-3 pr-2 text-sm text-slate-700 dark:text-slate-300 font-bold text-right">
+                                        <td class="py-3 pr-2 text-sm text-slate-700 dark:text-slate-300 font-bold text-center">
                                             {{ ((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toFixed(2) }}
                                         </td>
                                         <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.tax_percent" @input="calculateTaxAndTotal(item)" class="pos-input w-full !py-1.5 !px-2 text-center text-sm" required>
+                                            <input type="number" step="0.01" v-model="item.tax_percent" @input="calculateTaxAndTotal(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
                                         </td>
                                         <td class="py-3 pr-2">
+                                            <!-- {{ ((parseFloat(item.tax_amount) || 0) * (parseFloat(item.tax_amount) || 0)).toFixed(2) }} -->
                                             <input type="number" step="0.01" :value="item.tax_amount" class="pos-input w-full !py-1.5 !px-2 text-right text-sm disabled:opacity-50" disabled>
                                         </td>
-                                        <td class="py-3 pr-2 text-sm text-indigo-600 dark:text-[#06b6d4] font-black text-right">
+                                        <td class="py-3 pr-2 text-sm text-indigo-600 dark:text-[#06b6d4] font-black text-center">
                                             {{ (((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)) + (parseFloat(item.tax_amount) || 0)).toFixed(2) }}
                                         </td>
-                                        <td class="py-3 text-xs font-bold text-slate-500 dark:text-slate-400 pl-3">
+                                        <td class="py-3 text-xs font-bold text-slate-500 dark:text-slate-400 pl-3 text-center">
                                             {{ getConversionText(item) }}
                                         </td>
                                         <td class="py-3 text-right">

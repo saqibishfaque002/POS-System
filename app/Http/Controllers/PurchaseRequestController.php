@@ -112,4 +112,17 @@ class PurchaseRequestController extends Controller
         $purchaseRequest->delete();
         return back();
     }
+
+    public function print(PurchaseRequest $purchaseRequest)
+    {
+        $purchaseRequest->load(['branch.company', 'items.item.purchaseUnit', 'items.unit']);
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+
+        return Inertia::render('Trade/PrintDocument', [
+            'document' => $purchaseRequest,
+            'type' => 'PR',
+            'settings' => $settings,
+            'company' => \App\Models\Company::first(),
+        ]);
+    }
 }

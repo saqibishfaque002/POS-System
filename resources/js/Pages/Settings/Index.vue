@@ -322,6 +322,7 @@ const generalForm = useForm({
 
 const posForm = useForm({
     tax_rate: props.settings.tax_rate || 0,
+    print_mode: props.settings.print_mode || 'browser',
 });
 
 const submitGeneralSettings = () => {
@@ -487,6 +488,15 @@ const submitPosSettings = () => {
                                 <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Global Tax Rate (%)</label>
                                 <input type="number" step="0.01" v-model="posForm.tax_rate" class="pos-input w-full md:w-1/2" placeholder="e.g. 5.00">
                                 <p class="text-xs text-slate-500 mt-2">This tax rate will be applied to all POS orders automatically.</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Print Mode</label>
+                                <select v-model="posForm.print_mode" class="pos-input w-full md:w-1/2">
+                                    <option value="browser">Browser Print (Opens Print Dialog)</option>
+                                    <option value="pdf">PDF Download (Saves as PDF)</option>
+                                </select>
+                                <p class="text-xs text-slate-500 mt-2">Choose how documents (like PR, PO) are printed across the system.</p>
                             </div>
                             
                             <div class="pt-4 flex justify-end border-t border-slate-100 dark:border-slate-700/50">

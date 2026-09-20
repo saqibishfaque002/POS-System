@@ -15,6 +15,10 @@ class GoodReceivedNote extends Model
         return $this->hasMany(GoodReceivedNoteItem::class);
     }
 
+    public function supplier() {
+        return $this->belongsTo(Supplier::class);
+    }
+
     public function branch() {
         return $this->belongsTo(Branch::class);
     }

@@ -54,7 +54,9 @@ class PurchaseOrderController extends Controller
             'items.*.tax_percent' => 'required|numeric|min:0',
         ]);
 
-        $documentNumber = 'PO-' . strtoupper(Str::random(6));
+        $lastDoc = PurchaseOrder::where('branch_id', $validated['branch_id'])->latest('id')->first();
+        $sequence = $lastDoc ? intval(explode('-', $lastDoc->document_number)[2] ?? 0) + 1 : 1;
+        $documentNumber = 'PO-' . $validated['branch_id'] . '-' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
 
         $purchaseOrder = PurchaseOrder::create([
             'document_number' => $documentNumber,
@@ -167,5 +169,18 @@ class PurchaseOrderController extends Controller
         }
         $purchaseOrder->delete();
         return back()->with('success', 'Purchase Order deleted.');
+    }
+
+    public function print(PurchaseOrder $purchaseOrder)
+    {
+        $purchaseOrder->load(['branch.company', 'supplier', 'items.item.purchaseUnit', 'items.unit']);
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+
+        return Inertia::render('Trade/PrintDocument', [
+            'document' => $purchaseOrder,
+            'type' => 'PO',
+            'settings' => $settings,
+            'company' => \App\Models\Company::first(),
+        ]);
     }
 }
