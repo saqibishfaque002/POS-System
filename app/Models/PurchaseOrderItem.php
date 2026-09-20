@@ -9,7 +9,17 @@ class PurchaseOrderItem extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'purchase_order_id',
+        'item_id',
+        'unit_id',
+        'quantity',
+        'unit_price',
+        'subtotal',
+        'tax_percent',
+        'tax_amount',
+        'net_amount',
+    ];
     public $timestamps = false;
 
     public function purchase_order() {

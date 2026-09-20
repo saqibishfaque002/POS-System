@@ -36,6 +36,8 @@ onMounted(() => {
 });
 
 const isModalOpen = ref(false);
+const editingPr = ref(null);
+
 const form = useForm({
     branch_id: '',
     date: new Date().toISOString().split('T')[0],
@@ -53,17 +55,43 @@ const removeItem = (index) => {
     form.items.splice(index, 1);
 };
 
-const openModal = () => {
-    form.reset();
+const openModal = (pr = null) => {
+    if (pr) {
+        editingPr.value = pr;
+        form.branch_id = pr.branch_id;
+        form.date = pr.date;
+        form.notes = pr.notes || '';
+        form.items = pr.items.map(i => ({
+            item_id: i.item_id,
+            quantity: parseFloat(i.quantity),
+            unit_id: i.unit_id
+        }));
+    } else {
+        editingPr.value = null;
+        form.reset();
+        form.branch_id = '';
+        form.date = new Date().toISOString().split('T')[0];
+        form.notes = '';
+        form.items = [{ item_id: '', quantity: 1, unit_id: '' }];
+    }
     isModalOpen.value = true;
 };
 
 const submitForm = () => {
-    form.post(route('trade.purchase-requests.store'), {
-        onSuccess: () => {
-            isModalOpen.value = false;
-        }
-    });
+    if (editingPr.value) {
+        form.put(route('trade.purchase-requests.update', editingPr.value.id), {
+            onSuccess: () => {
+                isModalOpen.value = false;
+                editingPr.value = null;
+            }
+        });
+    } else {
+        form.post(route('trade.purchase-requests.store'), {
+            onSuccess: () => {
+                isModalOpen.value = false;
+            }
+        });
+    }
 };
 
 const onItemSelect = (item) => {
@@ -91,9 +119,8 @@ const deletePr = (pr) => {
 
 const columns = computed(() => [
     { key: 'document_number', label: 'PR Number' },
-    { key: 'branch.name', label: 'Branch' },
+    { key: 'branch_id', label: 'Branch' },
     { key: 'date', label: 'Date' },
-    { key: 'total_amount', label: 'Total Amount' },
     { key: 'status', label: 'Status' }
 ]);
 </script>
@@ -130,14 +157,16 @@ const columns = computed(() => [
 
                 <!-- Content -->
                 <main class="flex-1">
-                    <div class="dashboard-card p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-lg font-bold text-slate-800 dark:text-white">Purchase Requests</h2>
-                            <button @click="openModal" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
-                                + Create PR
-                            </button>
-                        </div>
-                        <DataTable :data="purchaseRequests" :columns="columns">
+                    <div class="dashboard-card p-6 border-0 shadow-none bg-transparent">
+                        <DataTable title="Purchase Requests" :data="purchaseRequests" :columns="columns">
+                            <template #actions>
+                                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
+                                    + Create PR
+                                </button>
+                            </template>
+                            <template #cell-branch_id="{ item }">
+                                {{ item.branch?.name }}
+                            </template>
                             <template #cell-status="{ item }">
                                 <span class="px-2 py-1 rounded-full text-xs font-bold"
                                       :class="{
@@ -150,6 +179,7 @@ const columns = computed(() => [
                                 </span>
                             </template>
                             <template #row-actions="{ item }">
+                                <button v-if="item.status === 'draft'" @click="openModal(item)" class="text-indigo-600 hover:text-indigo-800 dark:text-[#06b6d4] dark:hover:text-cyan-300 mr-3 text-xs font-bold transition-colors">Edit</button>
                                 <button v-if="item.status === 'draft'" @click="changeStatus(item, 'pending_approval')" class="text-yellow-600 hover:text-yellow-800 mr-3 text-xs font-bold transition-colors">Submit</button>
                                 <button v-if="item.status === 'pending_approval'" @click="changeStatus(item, 'approved')" class="text-green-600 hover:text-green-800 mr-3 text-xs font-bold transition-colors">Approve</button>
                                 <button v-if="item.status === 'pending_approval'" @click="changeStatus(item, 'rejected')" class="text-red-600 hover:text-red-800 mr-3 text-xs font-bold transition-colors">Reject</button>
@@ -163,20 +193,20 @@ const columns = computed(() => [
             <!-- Modal Form -->
             <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                 <div class="dashboard-card w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
-                    <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">New Purchase Request</h2>
+                    <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">{{ editingPr ? 'Edit' : 'New' }} Purchase Request</h2>
                     
                     <form @submit.prevent="submitForm" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
+                                <input type="date" v-model="form.date" class="pos-input w-full" required>
+                            </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Branch</label>
                                 <select v-model="form.branch_id" class="pos-input w-full" required>
                                     <option value="" disabled>Select Branch</option>
                                     <option v-for="branch in branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
-                                <input type="date" v-model="form.date" class="pos-input w-full" required>
                             </div>
                         </div>
 
@@ -234,10 +264,8 @@ const columns = computed(() => [
                         </div>
 
                         <div class="flex justify-end gap-3 mt-8">
-                            <button type="button" @click="isModalOpen = false" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">Cancel</button>
-                            <button type="submit" class="pos-btn-primary !py-2 !px-4" :disabled="form.processing">
-                                Submit Request
-                            </button>
+                            <button type="button" @click="isModalOpen = false" class="pos-btn-secondary !px-6 mr-3">Cancel</button>
+                            <button type="submit" class="pos-btn-primary !px-6" :disabled="form.processing">{{ editingPr ? 'Update Request' : 'Submit Request' }}</button>
                         </div>
                     </form>
                 </div>

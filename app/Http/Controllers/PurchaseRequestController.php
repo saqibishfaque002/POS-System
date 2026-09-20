@@ -62,6 +62,40 @@ class PurchaseRequestController extends Controller
         return back()->with('success', 'Purchase Request created successfully.');
     }
 
+    public function update(Request $request, PurchaseRequest $purchaseRequest)
+    {
+        if ($purchaseRequest->status !== 'draft') {
+            return back()->with('error', 'Only draft purchase requests can be edited.');
+        }
+
+        $validated = $request->validate([
+            'branch_id' => 'required|exists:branches,id',
+            'date' => 'required|date',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:ingredient_items,id',
+            'items.*.unit_id' => 'required|exists:ingredient_units,id',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+        ]);
+
+        $purchaseRequest->update([
+            'branch_id' => $validated['branch_id'],
+            'date' => $validated['date'],
+            'notes' => $validated['notes'],
+        ]);
+
+        $purchaseRequest->items()->delete();
+        foreach ($validated['items'] as $item) {
+            $purchaseRequest->items()->create([
+                'item_id' => $item['item_id'],
+                'quantity' => $item['quantity'],
+                'unit_id' => $item['unit_id']
+            ]);
+        }
+
+        return back()->with('success', 'Purchase Request updated successfully.');
+    }
+
     public function updateStatus(Request $request, PurchaseRequest $purchaseRequest)
     {
         $validated = $request->validate([

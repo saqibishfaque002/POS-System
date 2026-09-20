@@ -9,14 +9,31 @@ class PurchaseOrder extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'branch_id',
+        'supplier_id',
+        'document_number',
+        'date',
+        'delivery_date',
+        'status',
+        'reference_id',
+        'total_amount',
+        'notes',
+        'created_by',
+    ];
 
     public function items() {
         return $this->hasMany(PurchaseOrderItem::class);
     }
 
-    public function branch() {
+    public function branch()
+    {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
     
     public function creator() {

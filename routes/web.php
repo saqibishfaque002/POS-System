@@ -131,11 +131,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/purchase-requests', [\App\Http\Controllers\PurchaseRequestController::class, 'index'])->name('purchase-requests.index');
         Route::post('/purchase-requests', [\App\Http\Controllers\PurchaseRequestController::class, 'store'])->name('purchase-requests.store');
         Route::get('/purchase-requests/{purchaseRequest}', [\App\Http\Controllers\PurchaseRequestController::class, 'show'])->name('purchase-requests.show');
+        Route::put('/purchase-requests/{purchaseRequest}', [\App\Http\Controllers\PurchaseRequestController::class, 'update'])->name('purchase-requests.update');
         Route::patch('/purchase-requests/{purchaseRequest}/status', [\App\Http\Controllers\PurchaseRequestController::class, 'updateStatus'])->name('purchase-requests.status');
         Route::delete('/purchase-requests/{purchaseRequest}', [\App\Http\Controllers\PurchaseRequestController::class, 'destroy'])->name('purchase-requests.destroy');
         
         // Placeholders for other docs
         Route::get('/purchase-orders', [\App\Http\Controllers\PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+        Route::post('/purchase-orders', [\App\Http\Controllers\PurchaseOrderController::class, 'store'])->name('purchase-orders.store');
+        Route::put('/purchase-orders/{purchaseOrder}', [\App\Http\Controllers\PurchaseOrderController::class, 'update'])->name('purchase-orders.update');
+        Route::patch('/purchase-orders/{purchaseOrder}/status', [\App\Http\Controllers\PurchaseOrderController::class, 'updateStatus'])->name('purchase-orders.status');
+        Route::delete('/purchase-orders/{purchaseOrder}', [\App\Http\Controllers\PurchaseOrderController::class, 'destroy'])->name('purchase-orders.destroy');
         Route::get('/good-received-notes', [\App\Http\Controllers\GoodReceivedNoteController::class, 'index'])->name('good-received-notes.index');
         Route::get('/purchase-invoices', [\App\Http\Controllers\PurchaseInvoiceController::class, 'index'])->name('purchase-invoices.index');
         Route::get('/purchase-returns', [\App\Http\Controllers\PurchaseReturnController::class, 'index'])->name('purchase-returns.index');
