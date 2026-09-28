@@ -33,7 +33,8 @@ const props = defineProps({
     hasItemUnitPrice: { type: Boolean, default: true },
     hasReferenceQty: { type: Boolean, default: false },
     referenceQtyLabel: { type: String, default: 'Ref Qty' },
-    hasConversionUnit: { type: Boolean, default: false }
+    hasConversionUnit: { type: Boolean, default: false },
+    themeClass: { type: String, default: '' }
 });
 
 const emit = defineEmits(['close', 'submit', 'update:isReferenceLinked', 'reference-select', 'item-select']);
@@ -189,7 +190,7 @@ const getConversionText = (item) => {
 
 <template>
     <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="dashboard-card w-full max-w-[95vw] lg:max-w-7xl p-6 max-h-[90vh] overflow-y-auto">
+        <div :class="['dashboard-card w-full max-w-[95vw] lg:max-w-7xl p-6 max-h-[90vh] overflow-y-auto', themeClass]">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold text-slate-800 dark:text-white">{{ isEditing ? 'Edit' : 'New' }} {{ title }}</h2>
                 <div v-if="hasReference" class="flex items-center gap-3">

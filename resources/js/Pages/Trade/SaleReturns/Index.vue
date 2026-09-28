@@ -320,7 +320,7 @@ const formTotal = computed(() => {
                 <InventorySidebar />
 
                 <main class="flex-1">
-                    <div class="dashboard-card p-6 border-0 shadow-none bg-transparent">
+                    <div class="dashboard-card p-6 border-t-4 border-t-rose-500">
                         <DataTable title="Sale Returns" :data="saleReturns" :columns="columns">
                             <template #actions>
                                 <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm !bg-rose-600 hover:!bg-rose-700 dark:!bg-rose-600 dark:hover:!bg-rose-500">

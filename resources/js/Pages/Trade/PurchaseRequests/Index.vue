@@ -132,7 +132,7 @@ const columns = computed(() => [
     <div class="min-h-screen flex flex-col transition-colors duration-300 bg-slate-50 dark:bg-slate-900">
         <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
             <!-- Header -->
-            <header class="dashboard-card px-6 py-4 flex justify-between items-center mb-6">
+            <header class="dashboard-card px-6 py-4 flex justify-between items-center mb-6 border-t-4 border-t-yellow-500">
                 <div class="flex items-center gap-4">
                     <h1 class="text-xl font-semibold text-indigo-500 dark:text-[#06b6d4]">Purchase Requests</h1>
                     <div class="hidden md:flex items-center gap-3 ml-4 border-l pl-4 border-slate-200 dark:border-slate-700">
@@ -158,7 +158,7 @@ const columns = computed(() => [
 
                 <!-- Content -->
                 <main class="flex-1">
-                    <div class="dashboard-card p-6 border-0 shadow-none bg-transparent">
+                    <div class="dashboard-card p-6 border-t-4 border-t-yellow-500">
                         <DataTable title="Purchase Requests" :data="purchaseRequests" :columns="columns">
                             <template #actions>
                                 <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
@@ -202,6 +202,7 @@ const columns = computed(() => [
                 :units="units"
                 :has-date="true"
                 date-label="Date"
+                theme-class="border-t-4 border-t-yellow-500"
                 @close="isModalOpen = false"
                 @submit="submitForm"
                 @item-select="onItemSelect"

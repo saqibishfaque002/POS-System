@@ -227,7 +227,7 @@ const formTotal = computed(() => {
 
     <div class="min-h-screen flex flex-col transition-colors duration-300 bg-slate-50 dark:bg-slate-900">
         <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-            <header class="dashboard-card px-6 py-4 flex justify-between items-center mb-6">
+            <header class="dashboard-card px-6 py-4 flex justify-between items-center mb-6 border-t-4 border-t-emerald-500">
                 <div class="flex items-center gap-4">
                     <h1 class="text-xl font-semibold text-emerald-500 dark:text-emerald-400">Sale Invoices</h1>
                     <div class="hidden md:flex items-center gap-3 ml-4 border-l pl-4 border-slate-200 dark:border-slate-700">
@@ -251,7 +251,7 @@ const formTotal = computed(() => {
                 <InventorySidebar />
 
                 <main class="flex-1">
-                    <div class="dashboard-card p-6 border-0 shadow-none bg-transparent">
+                    <div class="dashboard-card p-6 border-t-4 border-t-emerald-500">
                         <DataTable title="Sale Invoices" :data="saleInvoices" :columns="columns">
                             <template #actions>
                                 <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm !bg-emerald-600 hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-500">
@@ -302,7 +302,7 @@ const formTotal = computed(() => {
             
             <!-- Modal Form -->
             <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                <div class="dashboard-card w-full max-w-[95vw] lg:max-w-7xl p-6 max-h-[90vh] overflow-y-auto">
+                <div class="dashboard-card w-full max-w-[95vw] lg:max-w-7xl p-6 max-h-[90vh] overflow-y-auto border-t-4 border-t-emerald-500">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-white">{{ editingSi ? 'Edit' : 'New' }} Sale Invoice</h2>
                     </div>
