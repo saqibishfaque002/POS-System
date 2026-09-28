@@ -140,19 +140,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/purchase-orders', [\App\Http\Controllers\PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
         Route::post('/purchase-orders', [\App\Http\Controllers\PurchaseOrderController::class, 'store'])->name('purchase-orders.store');
         Route::get('/purchase-orders/{purchaseOrder}/print', [\App\Http\Controllers\PurchaseOrderController::class, 'print'])->name('purchase-orders.print');
-        Route::put('/purchase-orders/{purchaseOrder}', [\App\Http\Controllers\PurchaseOrderController::class, 'update'])->name('purchase-orders.update');
-        Route::patch('/purchase-orders/{purchaseOrder}/status', [\App\Http\Controllers\PurchaseOrderController::class, 'updateStatus'])->name('purchase-orders.status');
-        Route::delete('/purchase-orders/{purchaseOrder}', [\App\Http\Controllers\PurchaseOrderController::class, 'destroy'])->name('purchase-orders.destroy');
-        Route::get('/good-received-notes', [\App\Http\Controllers\GoodReceivedNoteController::class, 'index'])->name('good-received-notes.index');
-        Route::post('/good-received-notes', [\App\Http\Controllers\GoodReceivedNoteController::class, 'store'])->name('good-received-notes.store');
-        Route::get('/good-received-notes/{goodReceivedNote}/print', [\App\Http\Controllers\GoodReceivedNoteController::class, 'print'])->name('good-received-notes.print');
-        Route::put('/good-received-notes/{goodReceivedNote}', [\App\Http\Controllers\GoodReceivedNoteController::class, 'update'])->name('good-received-notes.update');
-        Route::patch('/good-received-notes/{goodReceivedNote}/status', [\App\Http\Controllers\GoodReceivedNoteController::class, 'updateStatus'])->name('good-received-notes.status');
-        Route::delete('/good-received-notes/{goodReceivedNote}', [\App\Http\Controllers\GoodReceivedNoteController::class, 'destroy'])->name('good-received-notes.destroy');
-        Route::get('/purchase-invoices', [\App\Http\Controllers\PurchaseInvoiceController::class, 'index'])->name('purchase-invoices.index');
-        Route::get('/purchase-returns', [\App\Http\Controllers\PurchaseReturnController::class, 'index'])->name('purchase-returns.index');
-        Route::get('/sale-invoices', [\App\Http\Controllers\SaleInvoiceController::class, 'index'])->name('sale-invoices.index');
-        Route::get('/sale-returns', [\App\Http\Controllers\SaleReturnController::class, 'index'])->name('sale-returns.index');
+        Route::resource('purchase-orders', \App\Http\Controllers\PurchaseOrderController::class)->except(['create', 'show', 'edit']);
+        Route::patch('/purchase-orders/{purchase_order}/status', [\App\Http\Controllers\PurchaseOrderController::class, 'updateStatus'])->name('purchase-orders.status');
+        Route::get('/purchase-orders/{purchase_order}/print', [\App\Http\Controllers\PurchaseOrderController::class, 'print'])->name('purchase-orders.print');
+
+        Route::resource('good-received-notes', \App\Http\Controllers\GoodReceivedNoteController::class)->except(['create', 'show', 'edit']);
+        Route::patch('/good-received-notes/{good_received_note}/status', [\App\Http\Controllers\GoodReceivedNoteController::class, 'updateStatus'])->name('good-received-notes.status');
+        Route::get('/good-received-notes/{good_received_note}/print', [\App\Http\Controllers\GoodReceivedNoteController::class, 'print'])->name('good-received-notes.print');
+
+        Route::resource('purchase-invoices', \App\Http\Controllers\PurchaseInvoiceController::class)->except(['create', 'show', 'edit']);
+        Route::patch('/purchase-invoices/{purchase_invoice}/status', [\App\Http\Controllers\PurchaseInvoiceController::class, 'updateStatus'])->name('purchase-invoices.status');
+        Route::get('/purchase-invoices/{purchase_invoice}/print', [\App\Http\Controllers\PurchaseInvoiceController::class, 'print'])->name('purchase-invoices.print');
+
+        Route::resource('purchase-returns', \App\Http\Controllers\PurchaseReturnController::class)->except(['create', 'show', 'edit']);
+        Route::patch('/purchase-returns/{purchase_return}/status', [\App\Http\Controllers\PurchaseReturnController::class, 'updateStatus'])->name('purchase-returns.status');
+        Route::get('/purchase-returns/{purchase_return}/print', [\App\Http\Controllers\PurchaseReturnController::class, 'print'])->name('purchase-returns.print');
+        Route::resource('sale-invoices', \App\Http\Controllers\SaleInvoiceController::class)->except(['create', 'show', 'edit']);
+        Route::patch('/sale-invoices/{sale_invoice}/status', [\App\Http\Controllers\SaleInvoiceController::class, 'updateStatus'])->name('sale-invoices.status');
+        Route::get('/sale-invoices/{sale_invoice}/print', [\App\Http\Controllers\SaleInvoiceController::class, 'print'])->name('sale-invoices.print');
+        Route::resource('sale-returns', \App\Http\Controllers\SaleReturnController::class)->except(['create', 'show', 'edit']);
+        Route::patch('/sale-returns/{sale_return}/status', [\App\Http\Controllers\SaleReturnController::class, 'updateStatus'])->name('sale-returns.status');
+        Route::get('/sale-returns/{sale_return}/print', [\App\Http\Controllers\SaleReturnController::class, 'print'])->name('sale-returns.print');
     });
 });
 

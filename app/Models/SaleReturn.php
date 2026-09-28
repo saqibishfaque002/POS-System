@@ -22,4 +22,8 @@ class SaleReturn extends Model
     public function creator() {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function saleInvoice() {
+        return $this->belongsTo(SaleInvoice::class, 'reference_id');
+    }
 }

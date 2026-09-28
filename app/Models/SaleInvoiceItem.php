@@ -10,7 +10,6 @@ class SaleInvoiceItem extends Model
     use HasFactory;
 
     protected $guarded = [];
-    public $timestamps = false;
 
     public function sale_invoice() {
         return $this->belongsTo(SaleInvoice::class);

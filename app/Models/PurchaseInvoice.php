@@ -22,4 +22,20 @@ class PurchaseInvoice extends Model
     public function creator() {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function supplier() {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function goodReceivedNote() {
+        return $this->belongsTo(GoodReceivedNote::class, 'reference_id');
+    }
+
+    public function purchaseReturns() {
+        return $this->hasMany(PurchaseReturn::class, 'reference_id');
+    }
+
+    public function purchaseReturn() {
+        return $this->hasOne(PurchaseReturn::class, 'reference_id');
+    }
 }

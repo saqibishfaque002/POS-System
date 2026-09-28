@@ -18,7 +18,7 @@ class PurchaseOrderController extends Controller
 {
     public function index()
     {
-        $purchaseOrders = PurchaseOrder::with(['branch', 'supplier', 'items.item.purchase_unit'])->latest()->get();
+        $purchaseOrders = PurchaseOrder::with(['branch', 'supplier', 'items.item.purchaseUnit'])->latest()->get();
         $branches = Branch::where('is_active', true)->get();
         $suppliers = Supplier::where('is_active', true)->get();
         $items = IngredientItem::with(['purchaseUnit', 'consumptionUnit'])->where('is_active', true)->get();

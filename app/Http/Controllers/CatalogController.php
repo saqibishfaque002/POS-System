@@ -9,6 +9,11 @@ use App\Models\FoodItem;
 use App\Models\PropertyGroup;
 use App\Models\PropertyItem;
 use App\Models\Variation;
+use App\Http\Requests\Catalog\FoodGroupRequest;
+use App\Http\Requests\Catalog\FoodItemRequest;
+use App\Http\Requests\Catalog\PropertyGroupRequest;
+use App\Http\Requests\Catalog\PropertyItemRequest;
+use App\Http\Requests\Catalog\VariationRequest;
 
 class CatalogController extends Controller
 {
@@ -24,16 +29,12 @@ class CatalogController extends Controller
     }
 
     // Food Group
-    public function storeFoodGroup(Request $request) {
-        $validated = $request->validate(['name' => 'required|string', 'description' => 'nullable|string', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        FoodGroup::create($validated);
+    public function storeFoodGroup(FoodGroupRequest $request) {
+        FoodGroup::create($request->validated());
         return back();
     }
-    public function updateFoodGroup(Request $request, FoodGroup $foodGroup) {
-        $validated = $request->validate(['name' => 'required|string', 'description' => 'nullable|string', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        $foodGroup->update($validated);
+    public function updateFoodGroup(FoodGroupRequest $request, FoodGroup $foodGroup) {
+        $foodGroup->update($request->validated());
         return back();
     }
     public function destroyFoodGroup(FoodGroup $foodGroup) {
@@ -42,16 +43,12 @@ class CatalogController extends Controller
     }
 
     // Food Item
-    public function storeFoodItem(Request $request) {
-        $validated = $request->validate(['food_group_id' => 'required|exists:food_groups,id', 'name' => 'required|string', 'base_price' => 'required|numeric', 'description' => 'nullable|string', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        FoodItem::create($validated);
+    public function storeFoodItem(FoodItemRequest $request) {
+        FoodItem::create($request->validated());
         return back();
     }
-    public function updateFoodItem(Request $request, FoodItem $foodItem) {
-        $validated = $request->validate(['food_group_id' => 'required|exists:food_groups,id', 'name' => 'required|string', 'base_price' => 'required|numeric', 'description' => 'nullable|string', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        $foodItem->update($validated);
+    public function updateFoodItem(FoodItemRequest $request, FoodItem $foodItem) {
+        $foodItem->update($request->validated());
         return back();
     }
     public function destroyFoodItem(FoodItem $foodItem) {
@@ -60,18 +57,12 @@ class CatalogController extends Controller
     }
 
     // Property Group
-    public function storePropertyGroup(Request $request) {
-        $validated = $request->validate(['name' => 'required|string', 'is_multiple' => 'boolean', 'is_active' => 'boolean']);
-        if (!isset($validated['is_multiple'])) $validated['is_multiple'] = false;
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        PropertyGroup::create($validated);
+    public function storePropertyGroup(PropertyGroupRequest $request) {
+        PropertyGroup::create($request->validated());
         return back();
     }
-    public function updatePropertyGroup(Request $request, PropertyGroup $propertyGroup) {
-        $validated = $request->validate(['name' => 'required|string', 'is_multiple' => 'boolean', 'is_active' => 'boolean']);
-        if (!isset($validated['is_multiple'])) $validated['is_multiple'] = false;
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        $propertyGroup->update($validated);
+    public function updatePropertyGroup(PropertyGroupRequest $request, PropertyGroup $propertyGroup) {
+        $propertyGroup->update($request->validated());
         return back();
     }
     public function destroyPropertyGroup(PropertyGroup $propertyGroup) {
@@ -80,16 +71,12 @@ class CatalogController extends Controller
     }
 
     // Property Item
-    public function storePropertyItem(Request $request) {
-        $validated = $request->validate(['property_group_id' => 'required|exists:property_groups,id', 'name' => 'required|string', 'extra_price' => 'required|numeric', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        PropertyItem::create($validated);
+    public function storePropertyItem(PropertyItemRequest $request) {
+        PropertyItem::create($request->validated());
         return back();
     }
-    public function updatePropertyItem(Request $request, PropertyItem $propertyItem) {
-        $validated = $request->validate(['property_group_id' => 'required|exists:property_groups,id', 'name' => 'required|string', 'extra_price' => 'required|numeric', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        $propertyItem->update($validated);
+    public function updatePropertyItem(PropertyItemRequest $request, PropertyItem $propertyItem) {
+        $propertyItem->update($request->validated());
         return back();
     }
     public function destroyPropertyItem(PropertyItem $propertyItem) {
@@ -98,16 +85,12 @@ class CatalogController extends Controller
     }
 
     // Variation
-    public function storeVariation(Request $request) {
-        $validated = $request->validate(['food_item_id' => 'required|exists:food_items,id', 'name' => 'required|string', 'sku' => 'nullable|string', 'price' => 'required|numeric', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        Variation::create($validated);
+    public function storeVariation(VariationRequest $request) {
+        Variation::create($request->validated());
         return back();
     }
-    public function updateVariation(Request $request, Variation $variation) {
-        $validated = $request->validate(['food_item_id' => 'required|exists:food_items,id', 'name' => 'required|string', 'sku' => 'nullable|string', 'price' => 'required|numeric', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        $variation->update($validated);
+    public function updateVariation(VariationRequest $request, Variation $variation) {
+        $variation->update($request->validated());
         return back();
     }
     public function destroyVariation(Variation $variation) {

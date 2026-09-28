@@ -26,4 +26,8 @@ class GoodReceivedNote extends Model
     public function creator() {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function purchaseInvoice() {
+        return $this->hasOne(PurchaseInvoice::class, 'reference_id');
+    }
 }

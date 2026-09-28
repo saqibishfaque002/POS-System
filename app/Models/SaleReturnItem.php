@@ -10,7 +10,6 @@ class SaleReturnItem extends Model
     use HasFactory;
 
     protected $guarded = [];
-    public $timestamps = false;
 
     public function sale_return() {
         return $this->belongsTo(SaleReturn::class);

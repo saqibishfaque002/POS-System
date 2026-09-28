@@ -77,7 +77,7 @@ onMounted(() => {
                 <!-- Document Title -->
                 <div class="text-right flex flex-col justify-end h-full mt-4">
                     <h2 class="text-4xl font-black text-slate-200 uppercase tracking-widest">
-                        {{ type === 'PR' ? 'Purchase Request' : type === 'PO' ? 'Purchase Order' : 'Goods Received Note' }}
+                        {{ type === 'PR' ? 'Purchase Request' : type === 'PO' ? 'Purchase Order' : type === 'GRN' ? 'Goods Received Note' : type === 'PI' ? 'Purchase Invoice' : type === 'PRTN' ? 'Purchase Return' : type === 'SI' ? 'Sale Invoice' : type === 'SRTN' ? 'Sale Return' : 'Document' }}
                     </h2>
                 </div>
             </div>
@@ -86,8 +86,8 @@ onMounted(() => {
             <div class="grid grid-cols-2 gap-12 mb-12">
                 <!-- Left Column: Parties -->
                 <div class="space-y-8">
-                    <!-- PO/GRN Specific: Vendor Info -->
-                    <div v-if="['PO', 'GRN'].includes(type)">
+                    <!-- PO/GRN/PI Specific: Vendor Info -->
+                    <div v-if="['PO', 'GRN', 'PI', 'PRTN'].includes(type)">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Vendor Details</h3>
                         <p class="text-xl font-bold text-slate-800">{{ document.supplier?.name || 'N/A' }}</p>
                         <div class="mt-2 text-sm text-slate-500 leading-relaxed">
@@ -97,9 +97,18 @@ onMounted(() => {
                         </div>
                     </div>
 
+                    <!-- SI / SRTN Specific: Customer Info -->
+                    <div v-if="['SI', 'SRTN'].includes(type)">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Customer Details</h3>
+                        <p class="text-xl font-bold text-slate-800">{{ document.customer_name || 'Walk-in Customer' }}</p>
+                        <div class="mt-2 text-sm text-slate-500 leading-relaxed">
+                            <p v-if="document.customer_phone">Phone: <span class="text-slate-700">{{ document.customer_phone }}</span></p>
+                        </div>
+                    </div>
+
                     <!-- Ship To Info -->
-                    <div v-if="['PO', 'GRN'].includes(type)">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Ship To</h3>
+                    <div v-if="['PO', 'GRN', 'PI', 'PRTN', 'SI', 'SRTN'].includes(type)">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Ship To / Branch</h3>
                         <p class="text-lg font-bold text-slate-800">{{ document.branch?.name }}</p>
                         <div class="mt-2 text-sm text-slate-500 leading-relaxed">
                             <p v-if="document.branch?.address">{{ document.branch?.address }}</p>
@@ -115,6 +124,18 @@ onMounted(() => {
                                 <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs">Document No</span>
                                 <span class="font-bold text-lg tracking-wide">{{ document.document_number }}</span>
                             </div>
+                            <div v-if="type === 'PI' && document.reference_id" class="flex justify-between items-center border-b border-slate-600/50 pb-3">
+                                <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs">GRN Ref</span>
+                                <span class="font-medium">{{ document.good_received_note?.document_number || 'N/A' }}</span>
+                            </div>
+                            <div v-if="type === 'PRTN' && document.reference_id" class="flex justify-between items-center border-b border-slate-600/50 pb-3">
+                                <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs">PI Ref</span>
+                                <span class="font-medium">{{ document.purchase_invoice?.document_number || 'N/A' }}</span>
+                            </div>
+                            <div v-if="type === 'SRTN' && document.reference_id" class="flex justify-between items-center border-b border-slate-600/50 pb-3">
+                                <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs">SI Ref</span>
+                                <span class="font-medium">{{ document.sale_invoice?.document_number || 'N/A' }}</span>
+                            </div>
                             <div class="flex justify-between items-center border-b border-slate-600/50 pb-3">
                                 <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs">Date</span>
                                 <span class="font-medium">{{ formatDate(document.date || document.created_at) }}</span>
@@ -122,6 +143,10 @@ onMounted(() => {
                             <div v-if="['PO', 'GRN'].includes(type) && document.delivery_date" class="flex justify-between items-center border-b border-slate-600/50 pb-3">
                                 <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs">Delivery Date</span>
                                 <span class="font-medium text-emerald-400">{{ formatDate(document.delivery_date) }}</span>
+                            </div>
+                            <div v-if="type === 'PI' && document.due_date" class="flex justify-between items-center border-b border-slate-600/50 pb-3">
+                                <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs">Due Date</span>
+                                <span class="font-medium text-rose-400">{{ formatDate(document.due_date) }}</span>
                             </div>
                             <div class="flex justify-between items-center pt-1">
                                 <span class="text-slate-400 font-semibold uppercase tracking-wider text-xs">Status</span>
@@ -144,9 +169,11 @@ onMounted(() => {
                             <th class="py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider border border-slate-200 text-right w-24">Qty</th>
                             <th class="py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider border border-slate-200 w-32">Unit</th>
                             
-                            <template v-if="['PO', 'GRN'].includes(type)">
+                            <template v-if="['PO', 'GRN', 'PI', 'PRTN', 'SI', 'SRTN'].includes(type)">
                                 <th class="py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider border border-slate-200 text-right w-32">Rate</th>
                                 <th v-if="type === 'PO'" class="py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider border border-slate-200 text-right w-24">Tax %</th>
+                                <th v-if="['PI', 'PRTN', 'SI', 'SRTN'].includes(type)" class="py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider border border-slate-200 text-right w-24">Disc</th>
+                                <th v-if="['PI', 'PRTN', 'SI', 'SRTN'].includes(type)" class="py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider border border-slate-200 text-right w-24">Tax</th>
                                 <th class="py-3 px-4 text-xs font-bold text-slate-600 uppercase tracking-wider border border-slate-200 text-right w-32">Amount</th>
                             </template>
                         </tr>
@@ -158,23 +185,46 @@ onMounted(() => {
                             <td class="py-3 px-4 text-sm text-slate-800 text-right border border-slate-200">{{ item.quantity }}</td>
                             <td class="py-3 px-4 text-sm text-slate-600 border border-slate-200">{{ item.unit?.name }}</td>
                             
-                            <template v-if="['PO', 'GRN'].includes(type)">
+                            <template v-if="['PO', 'GRN', 'PI', 'PRTN', 'SI', 'SRTN'].includes(type)">
                                 <td class="py-3 px-4 text-sm text-slate-600 text-right border border-slate-200">{{ parseFloat(item.unit_price).toFixed(2) }}</td>
                                 <td v-if="type === 'PO'" class="py-3 px-4 text-sm text-slate-600 text-right border border-slate-200">{{ parseFloat(item.tax_percent || 0).toFixed(2) }}%</td>
-                                <td class="py-3 px-4 text-sm font-medium text-slate-800 text-right border border-slate-200">{{ parseFloat(item.net_amount ?? item.subtotal).toFixed(2) }}</td>
+                                <td v-if="['PI', 'PRTN', 'SI', 'SRTN'].includes(type)" class="py-3 px-4 text-sm text-slate-600 text-right border border-slate-200">{{ parseFloat(item.discount_amount || 0).toFixed(2) }}</td>
+                                <td v-if="['PI', 'PRTN', 'SI', 'SRTN'].includes(type)" class="py-3 px-4 text-sm text-slate-600 text-right border border-slate-200">{{ parseFloat(item.tax_amount || 0).toFixed(2) }}</td>
+                                <td class="py-3 px-4 text-sm font-medium text-slate-800 text-right border border-slate-200">{{ parseFloat(item.subtotal || item.net_amount).toFixed(2) }}</td>
                             </template>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- PO & GRN Totals -->
-            <div v-if="['PO', 'GRN'].includes(type)" class="flex justify-end mb-12">
+            <!-- Document Totals -->
+            <div v-if="['PO', 'GRN', 'PI', 'PRTN', 'SI', 'SRTN'].includes(type)" class="flex justify-end mb-12">
                 <div class="w-1/2 md:w-1/3">
-                    <div class="flex justify-between py-2 border-b border-slate-100">
-                        <span class="text-sm font-medium text-slate-600">Subtotal:</span>
-                        <span class="text-sm font-medium text-slate-800">{{ parseFloat(document.total_amount).toFixed(2) }}</span>
-                    </div>
+                    <template v-if="['PI', 'PRTN', 'SI', 'SRTN'].includes(type)">
+                        <div class="flex justify-between py-2 border-b border-slate-100">
+                            <span class="text-sm text-slate-600">Subtotal:</span>
+                            <span class="text-sm text-slate-800">{{ (parseFloat(document.total_amount) + parseFloat(document.discount_amount || 0) - parseFloat(document.tax_amount || 0) - parseFloat(document.shipping_amount || 0)).toFixed(2) }}</span>
+                        </div>
+                        <div v-if="parseFloat(document.discount_amount) > 0" class="flex justify-between py-2 border-b border-slate-100">
+                            <span class="text-sm text-slate-600">Discount:</span>
+                            <span class="text-sm text-rose-500">-{{ parseFloat(document.discount_amount).toFixed(2) }}</span>
+                        </div>
+                        <div v-if="parseFloat(document.tax_amount) > 0" class="flex justify-between py-2 border-b border-slate-100">
+                            <span class="text-sm text-slate-600">Tax:</span>
+                            <span class="text-sm text-indigo-500">+{{ parseFloat(document.tax_amount).toFixed(2) }}</span>
+                        </div>
+                        <div v-if="parseFloat(document.shipping_amount) > 0" class="flex justify-between py-2 border-b border-slate-100">
+                            <span class="text-sm text-slate-600">Shipping:</span>
+                            <span class="text-sm text-indigo-500">+{{ parseFloat(document.shipping_amount).toFixed(2) }}</span>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <div class="flex justify-between py-2 border-b border-slate-100">
+                            <span class="text-sm font-medium text-slate-600">Subtotal:</span>
+                            <span class="text-sm font-medium text-slate-800">{{ parseFloat(document.total_amount).toFixed(2) }}</span>
+                        </div>
+                    </template>
+                    
                     <div class="flex justify-between py-3 border-b-2 border-slate-800">
                         <span class="text-base font-bold text-slate-800">Grand Total:</span>
                         <span class="text-base font-bold text-slate-800">{{ parseFloat(document.total_amount).toFixed(2) }}</span>

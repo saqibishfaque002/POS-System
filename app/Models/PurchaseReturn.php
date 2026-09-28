@@ -19,6 +19,14 @@ class PurchaseReturn extends Model
         return $this->belongsTo(Branch::class);
     }
     
+    public function supplier() {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function purchaseInvoice() {
+        return $this->belongsTo(PurchaseInvoice::class, 'reference_id');
+    }
+    
     public function creator() {
         return $this->belongsTo(User::class, 'created_by');
     }

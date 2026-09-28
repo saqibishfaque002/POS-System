@@ -10,7 +10,9 @@ use App\Models\Supplier;
 use App\Models\IngredientItem;
 use App\Models\IngredientUnit;
 use App\Models\PurchaseOrder;
+use App\Models\InventoryLedger;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class GoodReceivedNoteController extends Controller
@@ -140,7 +142,29 @@ class GoodReceivedNoteController extends Controller
             'status' => 'required|in:draft,issued,completed,cancelled'
         ]);
 
-        $goodReceivedNote->update(['status' => $validated['status']]);
+        if ($goodReceivedNote->status === 'completed' && $validated['status'] !== 'completed') {
+            return back()->with('error', 'Cannot change status of a completed GRN.');
+        }
+
+        DB::transaction(function () use ($goodReceivedNote, $validated) {
+            $goodReceivedNote->update(['status' => $validated['status']]);
+
+            if ($validated['status'] === 'completed') {
+                foreach ($goodReceivedNote->items as $item) {
+                    InventoryLedger::create([
+                        'branch_id' => $goodReceivedNote->branch_id,
+                        'item_id' => $item->item_id,
+                        'document_type' => GoodReceivedNote::class,
+                        'document_id' => $goodReceivedNote->id,
+                        'document_date' => $goodReceivedNote->date,
+                        'quantity' => $item->quantity, // Positive for IN
+                        'unit_price' => $item->unit_price,
+                        'notes' => 'Received via GRN ' . $goodReceivedNote->document_number,
+                        'created_by' => auth()->id()
+                    ]);
+                }
+            }
+        });
 
         return back()->with('success', 'GRN status updated.');
     }
