@@ -7,6 +7,9 @@ use Inertia\Inertia;
 use App\Models\IngredientGroup;
 use App\Models\IngredientItem;
 use App\Models\IngredientUnit;
+use App\Http\Requests\Ingredients\IngredientUnitRequest;
+use App\Http\Requests\Ingredients\IngredientGroupRequest;
+use App\Http\Requests\Ingredients\IngredientItemRequest;
 
 class IngredientController extends Controller
 {
@@ -20,16 +23,12 @@ class IngredientController extends Controller
     }
 
     // Ingredient Unit
-    public function storeIngredientUnit(Request $request) {
-        $validated = $request->validate(['name' => 'required|string', 'short_code' => 'nullable|string', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        IngredientUnit::create($validated);
+    public function storeIngredientUnit(IngredientUnitRequest $request) {
+        IngredientUnit::create($request->validated());
         return back();
     }
-    public function updateIngredientUnit(Request $request, IngredientUnit $ingredientUnit) {
-        $validated = $request->validate(['name' => 'required|string', 'short_code' => 'nullable|string', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        $ingredientUnit->update($validated);
+    public function updateIngredientUnit(IngredientUnitRequest $request, IngredientUnit $ingredientUnit) {
+        $ingredientUnit->update($request->validated());
         return back();
     }
     public function destroyIngredientUnit(IngredientUnit $ingredientUnit) {
@@ -38,16 +37,12 @@ class IngredientController extends Controller
     }
 
     // Ingredient Group
-    public function storeIngredientGroup(Request $request) {
-        $validated = $request->validate(['name' => 'required|string', 'description' => 'nullable|string', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        IngredientGroup::create($validated);
+    public function storeIngredientGroup(IngredientGroupRequest $request) {
+        IngredientGroup::create($request->validated());
         return back();
     }
-    public function updateIngredientGroup(Request $request, IngredientGroup $ingredientGroup) {
-        $validated = $request->validate(['name' => 'required|string', 'description' => 'nullable|string', 'is_active' => 'boolean']);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        $ingredientGroup->update($validated);
+    public function updateIngredientGroup(IngredientGroupRequest $request, IngredientGroup $ingredientGroup) {
+        $ingredientGroup->update($request->validated());
         return back();
     }
     public function destroyIngredientGroup(IngredientGroup $ingredientGroup) {
@@ -56,38 +51,12 @@ class IngredientController extends Controller
     }
 
     // Ingredient Item
-    public function storeIngredientItem(Request $request) {
-        $validated = $request->validate([
-            'ingredient_group_id' => 'required|exists:ingredient_groups,id',
-            'name' => 'required|string',
-            'base_price' => 'required|numeric',
-            'description' => 'nullable|string',
-            'purchase_unit_id' => 'required|exists:ingredient_units,id',
-            'conversion_qty' => 'required|numeric',
-            'consumption_unit_id' => 'required|exists:ingredient_units,id',
-            'consumption_qty' => 'required|numeric',
-            'reorder_level' => 'required|numeric',
-            'is_active' => 'boolean'
-        ]);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        IngredientItem::create($validated);
+    public function storeIngredientItem(IngredientItemRequest $request) {
+        IngredientItem::create($request->validated());
         return back();
     }
-    public function updateIngredientItem(Request $request, IngredientItem $ingredientItem) {
-        $validated = $request->validate([
-            'ingredient_group_id' => 'required|exists:ingredient_groups,id',
-            'name' => 'required|string',
-            'base_price' => 'required|numeric',
-            'description' => 'nullable|string',
-            'purchase_unit_id' => 'required|exists:ingredient_units,id',
-            'conversion_qty' => 'required|numeric',
-            'consumption_unit_id' => 'required|exists:ingredient_units,id',
-            'consumption_qty' => 'required|numeric',
-            'reorder_level' => 'required|numeric',
-            'is_active' => 'boolean'
-        ]);
-        if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        $ingredientItem->update($validated);
+    public function updateIngredientItem(IngredientItemRequest $request, IngredientItem $ingredientItem) {
+        $ingredientItem->update($request->validated());
         return back();
     }
     public function destroyIngredientItem(IngredientItem $ingredientItem) {

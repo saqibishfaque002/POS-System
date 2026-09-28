@@ -7,6 +7,8 @@ use App\Models\Branch;
 use App\Models\PurchaseInvoice;
 use App\Models\Supplier;
 use App\Models\GoodReceivedNote;
+use App\Http\Requests\Trade\PurchaseInvoiceRequest;
+use App\Services\TradeDocumentService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 
@@ -37,32 +39,15 @@ class PurchaseInvoiceController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(PurchaseInvoiceRequest $request, TradeDocumentService $service)
     {
-        $validated = $request->validate([
-            'branch_id' => 'required|exists:branches,id',
-            'supplier_id' => 'required|exists:suppliers,id',
-            'reference_id' => 'nullable|exists:good_received_notes,id',
-            'date' => 'required|date',
-            'due_date' => 'nullable|date',
-            'notes' => 'nullable|string',
-            'discount_amount' => 'numeric|min:0',
-            'tax_amount' => 'numeric|min:0',
-            'shipping_amount' => 'numeric|min:0',
-            'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:ingredient_items,id',
-            'items.*.unit_id' => 'required|exists:ingredient_units,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0',
-            'items.*.discount_amount' => 'numeric|min:0',
-            'items.*.tax_amount' => 'numeric|min:0',
-        ]);
+        $validated = $request->validated();
 
         $lastDoc = PurchaseInvoice::where('branch_id', $validated['branch_id'])->latest('id')->first();
         $sequence = $lastDoc ? intval(explode('-', $lastDoc->document_number)[2] ?? 0) + 1 : 1;
         $documentNumber = 'PI-' . $validated['branch_id'] . '-' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
 
-        DB::transaction(function () use ($validated, $documentNumber) {
+        DB::transaction(function () use ($validated, $documentNumber, $service) {
             $purchaseInvoice = PurchaseInvoice::create([
                 'document_number' => $documentNumber,
                 'branch_id' => $validated['branch_id'],
@@ -78,58 +63,21 @@ class PurchaseInvoiceController extends Controller
                 'created_by' => auth()->id()
             ]);
 
-            $totalAmount = 0;
-
-            foreach ($validated['items'] as $item) {
-                $subtotal = ($item['quantity'] * $item['unit_price']) - ($item['discount_amount'] ?? 0) + ($item['tax_amount'] ?? 0);
-                $totalAmount += $subtotal;
-
-                $purchaseInvoice->items()->create([
-                    'item_id' => $item['item_id'],
-                    'unit_id' => $item['unit_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'discount_amount' => $item['discount_amount'] ?? 0,
-                    'tax_amount' => $item['tax_amount'] ?? 0,
-                    'subtotal' => $subtotal,
-                ]);
-            }
-
-            // Apply global adjustments
-            $totalAmount = $totalAmount - ($validated['discount_amount'] ?? 0) + ($validated['tax_amount'] ?? 0) + ($validated['shipping_amount'] ?? 0);
-
-            $purchaseInvoice->update(['total_amount' => $totalAmount]);
+            $service->savePurchaseInvoiceItems($purchaseInvoice, $validated['items'], $validated);
         });
 
         return back()->with('success', 'Purchase Invoice created successfully.');
     }
 
-    public function update(Request $request, PurchaseInvoice $purchaseInvoice)
+    public function update(PurchaseInvoiceRequest $request, PurchaseInvoice $purchaseInvoice, TradeDocumentService $service)
     {
         if ($purchaseInvoice->status !== 'draft') {
             return back()->with('error', 'Only draft PI can be edited.');
         }
 
-        $validated = $request->validate([
-            'branch_id' => 'required|exists:branches,id',
-            'supplier_id' => 'required|exists:suppliers,id',
-            'reference_id' => 'nullable|exists:good_received_notes,id',
-            'date' => 'required|date',
-            'due_date' => 'nullable|date',
-            'notes' => 'nullable|string',
-            'discount_amount' => 'numeric|min:0',
-            'tax_amount' => 'numeric|min:0',
-            'shipping_amount' => 'numeric|min:0',
-            'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:ingredient_items,id',
-            'items.*.unit_id' => 'required|exists:ingredient_units,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0',
-            'items.*.discount_amount' => 'numeric|min:0',
-            'items.*.tax_amount' => 'numeric|min:0',
-        ]);
+        $validated = $request->validated();
 
-        DB::transaction(function () use ($purchaseInvoice, $validated) {
+        DB::transaction(function () use ($purchaseInvoice, $validated, $service) {
             $purchaseInvoice->update([
                 'branch_id' => $validated['branch_id'],
                 'supplier_id' => $validated['supplier_id'],
@@ -142,26 +90,7 @@ class PurchaseInvoiceController extends Controller
                 'shipping_amount' => $validated['shipping_amount'] ?? 0,
             ]);
 
-            $purchaseInvoice->items()->delete();
-            
-            $totalAmount = 0;
-            foreach ($validated['items'] as $item) {
-                $subtotal = ($item['quantity'] * $item['unit_price']) - ($item['discount_amount'] ?? 0) + ($item['tax_amount'] ?? 0);
-                $totalAmount += $subtotal;
-
-                $purchaseInvoice->items()->create([
-                    'item_id' => $item['item_id'],
-                    'unit_id' => $item['unit_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'discount_amount' => $item['discount_amount'] ?? 0,
-                    'tax_amount' => $item['tax_amount'] ?? 0,
-                    'subtotal' => $subtotal,
-                ]);
-            }
-
-            $totalAmount = $totalAmount - ($validated['discount_amount'] ?? 0) + ($validated['tax_amount'] ?? 0) + ($validated['shipping_amount'] ?? 0);
-            $purchaseInvoice->update(['total_amount' => $totalAmount]);
+            $service->savePurchaseInvoiceItems($purchaseInvoice, $validated['items'], $validated);
         });
 
         return back()->with('success', 'Purchase Invoice updated successfully.');

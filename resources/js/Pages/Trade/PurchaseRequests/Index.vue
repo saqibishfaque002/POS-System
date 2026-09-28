@@ -4,6 +4,7 @@ import { Head, useForm, Link, router } from '@inertiajs/vue3';
 import DashboardLayout from '@/Pages/Dashboard.vue'; // We can just use a simple layout or rely on Dashboard
 import DataTable from '@/Components/DataTable.vue';
 import InventorySidebar from '@/Components/InventorySidebar.vue';
+import TradeDocumentFormModal from '../Components/TradeDocumentFormModal.vue';
 
 const props = defineProps({
     purchaseRequests: Array,
@@ -191,86 +192,20 @@ const columns = computed(() => [
                 </main>
             </div>
             
-            <!-- Modal Form -->
-            <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                <div class="dashboard-card w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
-                    <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">{{ editingPr ? 'Edit' : 'New' }} Purchase Request</h2>
-                    
-                    <form @submit.prevent="submitForm" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
-                                <input type="date" v-model="form.date" class="pos-input w-full" required>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Branch</label>
-                                <select v-model="form.branch_id" class="pos-input w-full" required>
-                                    <option value="" disabled>Select Branch</option>
-                                    <option v-for="branch in branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Items Table -->
-                        <div class="mb-6 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="font-semibold text-slate-800 dark:text-white">Request Items</h3>
-                                <button type="button" @click="addItem" class="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors">
-                                    + Add Item
-                                </button>
-                            </div>
-                            <div class="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                <table class="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-slate-50 dark:bg-slate-900/50 backdrop-blur-sm z-10">
-                                            <th class="pb-3 w-1/2">Ingredient Item</th>
-                                            <th class="pb-3 w-1/4">Quantity</th>
-                                            <th class="pb-3 w-1/4">Unit</th>
-                                            <th class="pb-3 w-8"></th>
-                                        </tr>
-                                    </thead>
-                                <tbody>
-                                    <tr v-for="(item, index) in form.items" :key="index" class="border-b border-slate-100 dark:border-slate-800 last:border-0">
-                                        <td class="py-3 pr-3">
-                                            <select v-model="item.item_id" @change="onItemSelect(item)" class="pos-input w-full !py-1.5" required>
-                                                <option value="" disabled>Select Item</option>
-                                                <option v-for="fi in items" :key="fi.id" :value="fi.id">{{ fi.name }}</option>
-                                            </select>
-                                        </td>
-                                        <td class="py-3 pr-3">
-                                            <input type="number" step="0.01" v-model="item.quantity" class="pos-input w-full !py-1.5 text-center" required>
-                                        </td>
-                                        <td class="py-3 pr-3">
-                                            <select v-model="item.unit_id" class="pos-input w-full !py-1.5" required>
-                                                <option value="" disabled>Select Unit</option>
-                                                <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
-                                            </select>
-                                        </td>
-                                        <td class="py-3 text-right">
-                                            <button type="button" @click="removeItem(index)" class="text-red-400 hover:text-red-600 transition-colors">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            </div>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notes</label>
-                            <textarea v-model="form.notes" class="pos-input w-full" rows="2"></textarea>
-                        </div>
-
-                        <div class="flex justify-end gap-3 mt-8">
-                            <button type="button" @click="isModalOpen = false" class="pos-btn-secondary !px-6 mr-3">Cancel</button>
-                            <button type="submit" class="pos-btn-primary !px-6" :disabled="form.processing">{{ editingPr ? 'Update Request' : 'Submit Request' }}</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+            <TradeDocumentFormModal
+                :is-open="isModalOpen"
+                :is-editing="!!editingPr"
+                title="Purchase Request"
+                :form="form"
+                :branches="branches"
+                :items="items"
+                :units="units"
+                :has-date="true"
+                date-label="Date"
+                @close="isModalOpen = false"
+                @submit="submitForm"
+                @item-select="onItemSelect"
+            />
 
         </div>
     </div>

@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { Head, useForm, Link, router } from '@inertiajs/vue3';
 import DataTable from '@/Components/DataTable.vue';
 import InventorySidebar from '@/Components/InventorySidebar.vue';
+import TradeDocumentFormModal from '../Components/TradeDocumentFormModal.vue';
 
 const props = defineProps({
     purchaseInvoices: Array,
@@ -51,7 +52,7 @@ const form = useForm({
     tax_amount: 0,
     shipping_amount: 0,
     items: [
-        { item_id: '', grn_qty: 0, quantity: 1, unit_id: '', unit_price: 0, discount_amount: 0, tax_amount: 0, _item_name: '' }
+        { item_id: '', ref_qty: 0, quantity: 1, unit_id: '', unit_price: 0, discount_amount: 0, tax_amount: 0, _item_name: '' }
     ]
 });
 
@@ -83,7 +84,7 @@ const onGrnSelect = () => {
             form.items = grn.items.map(i => {
                 return {
                     item_id: i.item_id,
-                    grn_qty: parseFloat(i.quantity),
+                    ref_qty: parseFloat(i.quantity),
                     quantity: parseFloat(i.quantity),
                     unit_id: i.unit_id,
                     unit_price: parseFloat(i.unit_price) || 0,
@@ -94,7 +95,7 @@ const onGrnSelect = () => {
             });
         }
     } else {
-        form.items = [{ item_id: '', grn_qty: 0, quantity: 1, unit_id: '', unit_price: 0, discount_amount: 0, tax_amount: 0, _item_name: '' }];
+        form.items = [{ item_id: '', ref_qty: 0, quantity: 1, unit_id: '', unit_price: 0, discount_amount: 0, tax_amount: 0, _item_name: '' }];
     }
 };
 
@@ -120,14 +121,14 @@ const openModal = (pi = null) => {
         }
 
         form.items = pi.items.map(i => {
-            let grnQty = 0;
+            let refQty = 0;
             if (grnItems.length > 0) {
                 const grItem = grnItems.find(gi => gi.item_id === i.item_id);
-                if (grItem) grnQty = parseFloat(grItem.quantity);
+                if (grItem) refQty = parseFloat(grItem.quantity);
             }
             return {
                 item_id: i.item_id,
-                grn_qty: grnQty,
+                ref_qty: refQty,
                 quantity: parseFloat(i.quantity),
                 unit_id: i.unit_id,
                 unit_price: parseFloat(i.unit_price),
@@ -207,17 +208,7 @@ const columns = computed(() => [
     { key: 'status', label: 'Status' }
 ]);
 
-const formTotal = computed(() => {
-    let subtotal = form.items.reduce((sum, item) => {
-        const qty = parseFloat(item.quantity) || 0;
-        const rate = parseFloat(item.unit_price) || 0;
-        const disc = parseFloat(item.discount_amount) || 0;
-        const tax = parseFloat(item.tax_amount) || 0;
-        return sum + (qty * rate) - disc + tax;
-    }, 0);
-    
-    return subtotal - (parseFloat(form.discount_amount) || 0) + (parseFloat(form.tax_amount) || 0) + (parseFloat(form.shipping_amount) || 0);
-});
+// Total computed property moved to TradeDocumentFormModal
 </script>
 
 <template>
@@ -299,172 +290,34 @@ const formTotal = computed(() => {
                 </main>
             </div>
             
-            <!-- Modal Form -->
-            <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                <div class="dashboard-card w-full max-w-[95vw] lg:max-w-7xl p-6 max-h-[90vh] overflow-y-auto">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-bold text-slate-800 dark:text-white">{{ editingPi ? 'Edit' : 'New' }} Purchase Invoice</h2>
-                        <div class="flex items-center gap-3">
-                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Link GRN?</span>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" v-model="isGrnLinked" :disabled="!!editingPi" class="sr-only peer">
-                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
-                                <span class="ml-2 text-sm font-medium text-slate-900 dark:text-slate-300">{{ isGrnLinked ? 'Yes' : 'No' }}</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <form @submit.prevent="submitForm" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            
-                            <!-- Branch -->
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Branch</label>
-                                <select v-model="form.branch_id" class="pos-input w-full" required>
-                                    <option value="" disabled>Select Branch</option>
-                                    <option v-for="branch in branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
-                                </select>
-                            </div>
-                            
-                            <div v-if="isGrnLinked">
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select GRN Reference</label>
-                                <select v-model="form.reference_id" @change="onGrnSelect" class="pos-input w-full" :disabled="!form.branch_id" :required="isGrnLinked">
-                                    <option value="">-- Select GRN --</option>
-                                    <option v-for="grn in filteredGrns" :key="grn.id" :value="grn.id">{{ grn.document_number }} - {{ grn.date }}</option>
-                                </select>
-                                <p v-if="!form.branch_id" class="text-xs text-orange-500 mt-1">Select branch first</p>
-                            </div>
-                            
-                            <!-- Date (Invoice Date) -->
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Invoice Date</label>
-                                <input type="date" v-model="form.date" class="pos-input w-full" required>
-                            </div>
-
-                            <!-- Due Date -->
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Due Date</label>
-                                <input type="date" v-model="form.due_date" class="pos-input w-full">
-                            </div>
-
-                            <!-- Supplier -->
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Supplier</label>
-                                <select v-model="form.supplier_id" class="pos-input w-full" required>
-                                    <option value="" disabled>Select Supplier</option>
-                                    <option v-for="sup in suppliers" :key="sup.id" :value="sup.id">{{ sup.name }}</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Items Table -->
-                        <div class="mb-6 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="font-semibold text-slate-800 dark:text-white">Invoice Items {{ isGrnLinked ? '(From GRN)' : '' }}</h3>
-                                <button v-if="!isGrnLinked" type="button" @click="addItem" class="pos-btn-secondary !py-1 !px-3 text-xs">
-                                    + Add Item
-                                </button>
-                            </div>
-                            <div class="max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                                <table class="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-slate-50 dark:bg-slate-900/50 backdrop-blur-sm z-10">
-                                            <th class="pb-3 w-48 text-center">Ingredient Item</th>
-                                            <th v-if="isGrnLinked" class="pb-3 w-20 text-center">GRN Qty</th>
-                                            <th class="pb-3 w-24 text-center">Inv Qty</th>
-                                            <th class="pb-3 w-24 text-center">Unit</th>
-                                            <th class="pb-3 w-24 text-center">Rate</th>
-                                            <th class="pb-3 w-24 text-center">Disc ($)</th>
-                                            <th class="pb-3 w-24 text-center">Tax ($)</th>
-                                            <th class="pb-3 w-32 text-center">Amount</th>
-                                            <th class="pb-3 w-8"></th>
-                                        </tr>
-                                    </thead>
-                                <tbody>
-                                    <tr v-if="isGrnLinked && form.items.length === 0">
-                                        <td colspan="7" class="py-6 text-center text-slate-500 italic">Select a GRN first to load items.</td>
-                                    </tr>
-                                    <tr v-for="(item, index) in form.items" :key="index" class="border-b border-slate-100 dark:border-slate-800 last:border-0">
-                                        <td class="py-3 pr-2">
-                                            <select v-if="isGrnLinked" v-model="item.item_id" class="pos-input w-full !py-1.5 !px-2 text-sm disabled:opacity-50" disabled required>
-                                                <option v-for="i in items" :key="i.id" :value="i.id">{{ i.name }}</option>
-                                            </select>
-                                            <select v-else v-model="item.item_id" @change="onItemSelect(item)" class="pos-input w-full !py-1.5 !px-2 text-sm" required>
-                                                <option value="" disabled>Select Item</option>
-                                                <option v-for="i in items" :key="i.id" :value="i.id">{{ i.name }}</option>
-                                            </select>
-                                        </td>
-                                        <td v-if="isGrnLinked" class="py-3 pr-2 text-center text-sm font-bold text-slate-500">
-                                            {{ item.grn_qty }}
-                                        </td>
-                                        <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.quantity" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
-                                        </td>
-                                        <td class="py-3 pr-2">
-                                            <select v-model="item.unit_id" class="pos-input w-full !py-1.5 !px-2 text-sm" :disabled="isGrnLinked" required>
-                                                <option value="" disabled>Unit</option>
-                                                <option v-for="u in units" :key="u.id" :value="u.id">{{ u.name }}</option>
-                                            </select>
-                                        </td>
-                                        <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.unit_price" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
-                                        </td>
-                                        <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.discount_amount" class="pos-input w-full !py-1.5 !px-2 text-right text-sm text-red-500">
-                                        </td>
-                                        <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.tax_amount" class="pos-input w-full !py-1.5 !px-2 text-right text-sm text-indigo-500">
-                                        </td>
-                                        <td class="py-3 pr-2 text-sm text-slate-700 dark:text-slate-300 font-bold text-center">
-                                            {{ (((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)) - (parseFloat(item.discount_amount) || 0) + (parseFloat(item.tax_amount) || 0)).toFixed(2) }}
-                                        </td>
-                                        <td class="py-3 text-right">
-                                            <button v-if="!isGrnLinked" type="button" @click="removeItem(index)" class="text-red-400 hover:text-red-600 transition-colors">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            </div>
-                        </div>
-
-                        <div class="flex flex-col md:flex-row justify-between gap-4">
-                            <div class="w-full md:w-1/2">
-                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notes</label>
-                                <textarea v-model="form.notes" class="pos-input w-full" rows="3"></textarea>
-                            </div>
-                            <div class="w-full md:w-1/3 flex flex-col justify-end gap-2">
-                                <div class="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
-                                    <span>Global Discount ($):</span>
-                                    <input type="number" step="0.01" v-model="form.discount_amount" class="pos-input w-24 !py-1 !px-2 text-right text-sm text-red-500">
-                                </div>
-                                <div class="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
-                                    <span>Global Tax ($):</span>
-                                    <input type="number" step="0.01" v-model="form.tax_amount" class="pos-input w-24 !py-1 !px-2 text-right text-sm text-indigo-500">
-                                </div>
-                                <div class="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
-                                    <span>Shipping ($):</span>
-                                    <input type="number" step="0.01" v-model="form.shipping_amount" class="pos-input w-24 !py-1 !px-2 text-right text-sm text-indigo-500">
-                                </div>
-                                <div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 mt-2">
-                                    <div class="flex justify-between items-center text-lg font-black text-slate-800 dark:text-white">
-                                        <span>Total Payable:</span>
-                                        <span class="text-indigo-600 dark:text-[#06b6d4]">${{ formTotal.toFixed(2) }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex justify-end gap-3 mt-8">
-                            <button type="button" @click="isModalOpen = false" class="pos-btn-secondary !px-6 mr-3">Cancel</button>
-                            <button type="submit" class="pos-btn-primary !px-6" :disabled="form.processing">{{ editingPi ? 'Update PI' : 'Submit PI' }}</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+            <TradeDocumentFormModal
+                :is-open="isModalOpen"
+                :is-editing="!!editingPi"
+                title="Purchase Invoice"
+                :form="form"
+                :branches="branches"
+                :suppliers="suppliers"
+                :items="items"
+                :units="units"
+                :has-supplier="true"
+                :has-reference="true"
+                :reference-options="filteredGrns"
+                reference-label="GRN"
+                v-model:isReferenceLinked="isGrnLinked"
+                :has-date="true"
+                date-label="Invoice Date"
+                :has-due-date="true"
+                :has-global-adjustments="true"
+                :has-item-discount="true"
+                :has-item-tax="true"
+                :has-item-unit-price="true"
+                :has-reference-qty="true"
+                reference-qty-label="GRN Qty"
+                @close="isModalOpen = false"
+                @submit="submitForm"
+                @reference-select="onGrnSelect"
+                @item-select="onItemSelect"
+            />
 
         </div>
     </div>

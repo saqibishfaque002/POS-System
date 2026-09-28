@@ -11,6 +11,8 @@ use App\Models\IngredientItem;
 use App\Models\IngredientUnit;
 use App\Models\PurchaseOrder;
 use App\Models\InventoryLedger;
+use App\Http\Requests\Trade\GoodReceivedNoteRequest;
+use App\Services\TradeDocumentService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -38,100 +40,51 @@ class GoodReceivedNoteController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(GoodReceivedNoteRequest $request, TradeDocumentService $service)
     {
-        $validated = $request->validate([
-            'branch_id' => 'required|exists:branches,id',
-            'supplier_id' => 'required|exists:suppliers,id',
-            'reference_id' => 'nullable|exists:purchase_orders,id',
-            'date' => 'required|date',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:ingredient_items,id',
-            'items.*.unit_id' => 'required|exists:ingredient_units,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0',
-        ]);
+        $validated = $request->validated();
 
         $lastDoc = GoodReceivedNote::where('branch_id', $validated['branch_id'])->latest('id')->first();
         $sequence = $lastDoc ? intval(explode('-', $lastDoc->document_number)[2] ?? 0) + 1 : 1;
         $documentNumber = 'GRN-' . $validated['branch_id'] . '-' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
 
-        $goodsRecievedNotes = GoodReceivedNote::create([
-            'document_number' => $documentNumber,
-            'branch_id' => $validated['branch_id'],
-            'supplier_id' => $validated['supplier_id'],
-            'reference_id' => $validated['reference_id'] ?? null,
-            'date' => $validated['date'],
-            'notes' => $validated['notes'],
-            'status' => 'draft',
-            'created_by' => auth()->id()
-        ]);
-
-        $totalAmount = 0;
-
-        foreach ($validated['items'] as $item) {
-            $subtotal = $item['quantity'] * $item['unit_price'];
-            $totalAmount += $subtotal;
-
-            $goodsRecievedNotes->items()->create([
-                'item_id' => $item['item_id'],
-                'unit_id' => $item['unit_id'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'subtotal' => $subtotal,
+        DB::transaction(function () use ($validated, $documentNumber, $service) {
+            $goodsRecievedNotes = GoodReceivedNote::create([
+                'document_number' => $documentNumber,
+                'branch_id' => $validated['branch_id'],
+                'supplier_id' => $validated['supplier_id'],
+                'reference_id' => $validated['reference_id'] ?? null,
+                'date' => $validated['date'],
+                'notes' => $validated['notes'],
+                'status' => 'draft',
+                'created_by' => auth()->id()
             ]);
-        }
 
-        $goodsRecievedNotes->update(['total_amount' => $totalAmount]);
+            $service->saveGoodReceivedNoteItems($goodsRecievedNotes, $validated['items']);
+        });
 
         return back()->with('success', 'GRN created successfully.');
     }
 
-    public function update(Request $request, GoodReceivedNote $goodReceivedNote)
+    public function update(GoodReceivedNoteRequest $request, GoodReceivedNote $goodReceivedNote, TradeDocumentService $service)
     {
         if ($goodReceivedNote->status !== 'draft') {
             return back()->with('error', 'Only draft GRN can be edited.');
         }
 
-        $validated = $request->validate([
-            'branch_id' => 'required|exists:branches,id',
-            'supplier_id' => 'required|exists:suppliers,id',
-            'reference_id' => 'nullable|exists:purchase_orders,id',
-            'date' => 'required|date',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:ingredient_items,id',
-            'items.*.unit_id' => 'required|exists:ingredient_units,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0',
-        ]);
+        $validated = $request->validated();
 
-        $goodReceivedNote->update([
-            'branch_id' => $validated['branch_id'],
-            'supplier_id' => $validated['supplier_id'],
-            'reference_id' => $validated['reference_id'] ?? null,
-            'date' => $validated['date'],
-            'notes' => $validated['notes'],
-        ]);
-
-        $goodReceivedNote->items()->delete();
-        
-        $totalAmount = 0;
-        foreach ($validated['items'] as $item) {
-            $subtotal = $item['quantity'] * $item['unit_price'];
-            $totalAmount += $subtotal;
-
-            $goodReceivedNote->items()->create([
-                'item_id' => $item['item_id'],
-                'unit_id' => $item['unit_id'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'subtotal' => $subtotal,
+        DB::transaction(function () use ($goodReceivedNote, $validated, $service) {
+            $goodReceivedNote->update([
+                'branch_id' => $validated['branch_id'],
+                'supplier_id' => $validated['supplier_id'],
+                'reference_id' => $validated['reference_id'] ?? null,
+                'date' => $validated['date'],
+                'notes' => $validated['notes'],
             ]);
-        }
 
-        $goodReceivedNote->update(['total_amount' => $totalAmount]);
+            $service->saveGoodReceivedNoteItems($goodReceivedNote, $validated['items']);
+        });
 
         return back()->with('success', 'GRN updated successfully.');
     }
