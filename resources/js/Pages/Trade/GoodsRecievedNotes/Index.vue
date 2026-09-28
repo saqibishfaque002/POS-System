@@ -80,6 +80,7 @@ const onPrSelect = () => {
     if (form.reference_id) {
         const pr = props.approvedPos.find(p => p.id === form.reference_id);
         if (pr && pr.items) {
+            form.supplier_id = pr.supplier_id || '';
             form.items = pr.items.map(i => {
                 const ingredientItem = props.items.find(ing => ing.id === i.item_id);
                 return {

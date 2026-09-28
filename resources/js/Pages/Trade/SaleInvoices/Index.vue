@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Head, useForm, Link, router } from '@inertiajs/vue3';
 import DataTable from '@/Components/DataTable.vue';
 import InventorySidebar from '@/Components/InventorySidebar.vue';
@@ -46,12 +46,15 @@ const form = useForm({
     tax_amount: 0,
     shipping_amount: 0,
     items: [
-        { item_id: '', quantity: 1, unit_price: 0, discount_amount: 0, tax_amount: 0, _item_name: '' }
+        { item_id: '', quantity: 1, unit_price: 0, discount_amount: 0, discount_percent: 0, tax_amount: 0, tax_percent: 0, _item_name: '' }
     ]
 });
 
+const globalDiscountPercent = ref(0);
+const globalTaxPercent = ref(0);
+
 const addItem = () => {
-    form.items.push({ item_id: '', quantity: 1, unit_price: 0, discount_amount: 0, tax_amount: 0, _item_name: '' });
+    form.items.push({ item_id: '', quantity: 1, unit_price: 0, discount_amount: 0, discount_percent: 0, tax_amount: 0, tax_percent: 0, _item_name: '' });
 };
 
 const removeItem = (index) => {
@@ -72,15 +75,43 @@ const openModal = (si = null) => {
         form.shipping_amount = parseFloat(si.shipping_amount) || 0;
         
         form.items = si.items.map(i => {
+            const qty = parseFloat(i.quantity);
+            const rate = parseFloat(i.unit_price);
+            const discAmt = parseFloat(i.discount_amount) || 0;
+            const taxAmt = parseFloat(i.tax_amount) || 0;
+            
+            const discPct = qty * rate > 0 ? (discAmt / (qty * rate) * 100) : 0;
+            const subAfterDisc = (qty * rate) - discAmt;
+            const taxPct = subAfterDisc > 0 ? (taxAmt / subAfterDisc * 100) : 0;
+            
             return {
                 item_id: i.item_id,
-                quantity: parseFloat(i.quantity),
-                unit_price: parseFloat(i.unit_price),
-                discount_amount: parseFloat(i.discount_amount) || 0,
-                tax_amount: parseFloat(i.tax_amount) || 0,
+                quantity: qty,
+                unit_price: rate,
+                discount_amount: discAmt,
+                discount_percent: parseFloat(discPct.toFixed(2)),
+                tax_amount: taxAmt,
+                tax_percent: parseFloat(taxPct.toFixed(2)),
                 _item_name: i.item ? i.item.name : 'Unknown Item'
             };
         });
+        
+        // Compute initial global percentages
+        setTimeout(() => {
+            const sub = itemSubtotal.value;
+            if (sub > 0) {
+                globalDiscountPercent.value = parseFloat(((form.discount_amount / sub) * 100).toFixed(2));
+                const subAfterDisc = sub - form.discount_amount;
+                if (subAfterDisc > 0) {
+                    globalTaxPercent.value = parseFloat(((form.tax_amount / subAfterDisc) * 100).toFixed(2));
+                } else {
+                    globalTaxPercent.value = 0;
+                }
+            } else {
+                globalDiscountPercent.value = 0;
+                globalTaxPercent.value = 0;
+            }
+        }, 50);
     } else {
         editingSi.value = null;
         form.clearErrors();
@@ -93,7 +124,9 @@ const openModal = (si = null) => {
         form.discount_amount = 0;
         form.tax_amount = 0;
         form.shipping_amount = 0;
-        form.items = [{ item_id: '', quantity: 1, unit_price: 0, discount_amount: 0, tax_amount: 0, _item_name: '' }];
+        globalDiscountPercent.value = 0;
+        globalTaxPercent.value = 0;
+        form.items = [{ item_id: '', quantity: 1, unit_price: 0, discount_amount: 0, discount_percent: 0, tax_amount: 0, tax_percent: 0, _item_name: '' }];
     }
     isModalOpen.value = true;
 };
@@ -147,16 +180,45 @@ const columns = computed(() => [
     { key: 'status', label: 'Status' }
 ]);
 
-const formTotal = computed(() => {
-    let subtotal = form.items.reduce((sum, item) => {
+const updateItemAmounts = (item) => {
+    const qty = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.unit_price) || 0;
+    
+    const dp = parseFloat(item.discount_percent) || 0;
+    item.discount_amount = qty * price * (dp / 100);
+    
+    const tp = parseFloat(item.tax_percent) || 0;
+    const sub = (qty * price) - item.discount_amount;
+    item.tax_amount = sub * (tp / 100);
+};
+
+const itemSubtotal = computed(() => {
+    return form.items.reduce((sum, item) => {
         const qty = parseFloat(item.quantity) || 0;
         const rate = parseFloat(item.unit_price) || 0;
         const disc = parseFloat(item.discount_amount) || 0;
         const tax = parseFloat(item.tax_amount) || 0;
         return sum + (qty * rate) - disc + tax;
     }, 0);
+});
+
+const updateGlobalAmounts = () => {
+    const sub = itemSubtotal.value;
     
-    return subtotal - (parseFloat(form.discount_amount) || 0) + (parseFloat(form.tax_amount) || 0) + (parseFloat(form.shipping_amount) || 0);
+    const dp = parseFloat(globalDiscountPercent.value) || 0;
+    form.discount_amount = parseFloat((sub * (dp / 100)).toFixed(2));
+    
+    const subAfterDiscount = sub - (parseFloat(form.discount_amount) || 0);
+    const tp = parseFloat(globalTaxPercent.value) || 0;
+    form.tax_amount = parseFloat((subAfterDiscount * (tp / 100)).toFixed(2));
+};
+
+watch(itemSubtotal, () => {
+    updateGlobalAmounts();
+});
+
+const formTotal = computed(() => {
+    return itemSubtotal.value - (parseFloat(form.discount_amount) || 0) + (parseFloat(form.tax_amount) || 0) + (parseFloat(form.shipping_amount) || 0);
 });
 </script>
 
@@ -291,8 +353,8 @@ const formTotal = computed(() => {
                                             <th class="pb-3 w-64 text-center">Food Item</th>
                                             <th class="pb-3 w-24 text-center">Qty</th>
                                             <th class="pb-3 w-32 text-center">Rate</th>
-                                            <th class="pb-3 w-24 text-center">Disc ($)</th>
-                                            <th class="pb-3 w-24 text-center">Tax ($)</th>
+                                            <th class="pb-3 w-36 text-center">Disc (%)</th>
+                                            <th class="pb-3 w-36 text-center">Tax (%)</th>
                                             <th class="pb-3 w-32 text-center">Amount</th>
                                             <th class="pb-3 w-8"></th>
                                         </tr>
@@ -306,16 +368,22 @@ const formTotal = computed(() => {
                                             </select>
                                         </td>
                                         <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.quantity" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
+                                            <input type="number" step="0.01" v-model="item.quantity" @input="updateItemAmounts(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
                                         </td>
                                         <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.unit_price" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
+                                            <input type="number" step="0.01" v-model="item.unit_price" @input="updateItemAmounts(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
                                         </td>
                                         <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.discount_amount" class="pos-input w-full !py-1.5 !px-2 text-right text-sm text-red-500">
+                                            <div class="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 px-2">
+                                                <input type="number" step="0.01" v-model="item.discount_percent" @input="updateItemAmounts(item)" class="w-16 bg-transparent border-none text-right text-sm text-red-500 focus:ring-0 p-1" placeholder="%">
+                                                <span class="text-[10px] font-bold text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-1 min-w-[35px] text-right">${{ (item.discount_amount || 0).toFixed(2) }}</span>
+                                            </div>
                                         </td>
                                         <td class="py-3 pr-2">
-                                            <input type="number" step="0.01" v-model="item.tax_amount" class="pos-input w-full !py-1.5 !px-2 text-right text-sm text-emerald-500">
+                                            <div class="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 px-2">
+                                                <input type="number" step="0.01" v-model="item.tax_percent" @input="updateItemAmounts(item)" class="w-16 bg-transparent border-none text-right text-sm text-emerald-500 focus:ring-0 p-1" placeholder="%">
+                                                <span class="text-[10px] font-bold text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-1 min-w-[35px] text-right">${{ (item.tax_amount || 0).toFixed(2) }}</span>
+                                            </div>
                                         </td>
                                         <td class="py-3 pr-2 text-sm text-slate-700 dark:text-slate-300 font-bold text-center">
                                             {{ (((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)) - (parseFloat(item.discount_amount) || 0) + (parseFloat(item.tax_amount) || 0)).toFixed(2) }}
@@ -338,14 +406,20 @@ const formTotal = computed(() => {
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Notes</label>
                                 <textarea v-model="form.notes" class="pos-input w-full" rows="3"></textarea>
                             </div>
-                            <div class="w-full md:w-1/3 flex flex-col justify-end gap-2">
+                                <div class="w-full md:w-1/3 flex flex-col justify-end gap-2">
                                 <div class="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
-                                    <span>Global Discount ($):</span>
-                                    <input type="number" step="0.01" v-model="form.discount_amount" class="pos-input w-24 !py-1 !px-2 text-right text-sm text-red-500">
+                                    <span>Global Discount:</span>
+                                    <div class="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 px-2 h-8">
+                                        <input type="number" step="0.01" v-model="globalDiscountPercent" @input="updateGlobalAmounts" class="w-16 bg-transparent border-none text-right text-sm text-red-500 focus:ring-0 p-0" placeholder="%">
+                                        <span class="text-xs font-bold text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-2 min-w-[50px] text-right">${{ (parseFloat(form.discount_amount) || 0).toFixed(2) }}</span>
+                                    </div>
                                 </div>
                                 <div class="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
-                                    <span>Global Tax ($):</span>
-                                    <input type="number" step="0.01" v-model="form.tax_amount" class="pos-input w-24 !py-1 !px-2 text-right text-sm text-emerald-500">
+                                    <span>Global Tax:</span>
+                                    <div class="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 px-2 h-8">
+                                        <input type="number" step="0.01" v-model="globalTaxPercent" @input="updateGlobalAmounts" class="w-16 bg-transparent border-none text-right text-sm text-emerald-500 focus:ring-0 p-0" placeholder="%">
+                                        <span class="text-xs font-bold text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-2 min-w-[50px] text-right">${{ (parseFloat(form.tax_amount) || 0).toFixed(2) }}</span>
+                                    </div>
                                 </div>
                                 <div class="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
                                     <span>Shipping ($):</span>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     isOpen: Boolean,
@@ -27,6 +27,7 @@ const props = defineProps({
     
     hasGlobalAdjustments: { type: Boolean, default: false },
     hasItemDiscount: { type: Boolean, default: false },
+    hasItemDiscountPercent: { type: Boolean, default: false },
     hasItemTax: { type: Boolean, default: false },
     hasItemTaxPercent: { type: Boolean, default: false },
     hasItemUnitPrice: { type: Boolean, default: true },
@@ -37,31 +38,96 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit', 'update:isReferenceLinked', 'reference-select', 'item-select']);
 
-const formTotal = computed(() => {
-    let subtotal = props.form.items.reduce((sum, item) => {
+const getValidUnits = (itemId) => {
+    if (!itemId) return props.units;
+    const ingredient = props.items.find(i => i.id === itemId);
+    if (!ingredient) return props.units;
+    
+    // POS mechanism: restrict to Default (purchase) and Base (consumption) units
+    return props.units.filter(u => u.id === ingredient.purchase_unit_id || u.id === ingredient.consumption_unit_id);
+};
+
+const handleItemSelect = (item) => {
+    const ingredient = props.items.find(i => i.id === item.item_id);
+    if (ingredient) {
+        // Auto-select Default Purchase Unit
+        item.unit_id = ingredient.purchase_unit_id;
+        if (props.hasItemUnitPrice) {
+            item.unit_price = parseFloat(ingredient.base_price) || 0;
+        }
+    }
+    emit('item-select', item);
+};
+
+const itemSubtotal = computed(() => {
+    return props.form.items.reduce((sum, item) => {
         const qty = parseFloat(item.quantity) || 0;
         const rate = parseFloat(item.unit_price) || 0;
         
         let lineAmount = qty * rate;
         
-        if (props.hasItemDiscount) {
+        if (props.hasItemDiscount || props.hasItemDiscountPercent) {
             lineAmount -= (parseFloat(item.discount_amount) || 0);
         }
         
-        if (props.hasItemTax) {
+        if (props.hasItemTax || props.hasItemTaxPercent) {
             lineAmount += (parseFloat(item.tax_amount) || 0);
-        } else if (props.hasItemTaxPercent) {
-            lineAmount += lineAmount * ((parseFloat(item.tax_percent) || 0) / 100);
         }
         
         return sum + lineAmount;
     }, 0);
+});
+
+const formTotal = computed(() => {
+    let total = itemSubtotal.value;
     
     if (props.hasGlobalAdjustments) {
-        subtotal = subtotal - (parseFloat(props.form.discount_amount) || 0) + (parseFloat(props.form.tax_amount) || 0) + (parseFloat(props.form.shipping_amount) || 0);
+        total = total - (parseFloat(props.form.discount_amount) || 0) + (parseFloat(props.form.tax_amount) || 0) + (parseFloat(props.form.shipping_amount) || 0);
     }
     
-    return subtotal;
+    return total;
+});
+
+const globalDiscountPercent = ref(0);
+const globalTaxPercent = ref(0);
+
+const updateGlobalAmounts = () => {
+    if (!props.hasGlobalAdjustments) return;
+    const sub = itemSubtotal.value;
+    
+    const dp = parseFloat(globalDiscountPercent.value) || 0;
+    props.form.discount_amount = parseFloat((sub * (dp / 100)).toFixed(2));
+    
+    const subAfterDiscount = sub - (parseFloat(props.form.discount_amount) || 0);
+    const tp = parseFloat(globalTaxPercent.value) || 0;
+    props.form.tax_amount = parseFloat((subAfterDiscount * (tp / 100)).toFixed(2));
+};
+
+watch(itemSubtotal, () => {
+    updateGlobalAmounts();
+});
+
+watch(() => props.isOpen, (isOpen) => {
+    if (isOpen && props.hasGlobalAdjustments) {
+        if (props.isEditing) {
+            const sub = itemSubtotal.value;
+            if (sub > 0) {
+                globalDiscountPercent.value = parseFloat((((parseFloat(props.form.discount_amount) || 0) / sub) * 100).toFixed(2));
+                const subAfterDisc = sub - (parseFloat(props.form.discount_amount) || 0);
+                if (subAfterDisc > 0) {
+                    globalTaxPercent.value = parseFloat((((parseFloat(props.form.tax_amount) || 0) / subAfterDisc) * 100).toFixed(2));
+                } else {
+                    globalTaxPercent.value = 0;
+                }
+            } else {
+                globalDiscountPercent.value = 0;
+                globalTaxPercent.value = 0;
+            }
+        } else {
+            globalDiscountPercent.value = 0;
+            globalTaxPercent.value = 0;
+        }
+    }
 });
 
 const addItem = () => {
@@ -72,9 +138,26 @@ const addItem = () => {
         unit_id: '', 
         unit_price: 0, 
         discount_amount: 0, 
+        discount_percent: 0,
         tax_amount: 0, 
         tax_percent: 0 
     });
+};
+
+const updateItemAmounts = (item) => {
+    const qty = parseFloat(item.quantity) || 0;
+    const price = parseFloat(item.unit_price) || 0;
+    
+    if (props.hasItemDiscountPercent) {
+        const dp = parseFloat(item.discount_percent) || 0;
+        item.discount_amount = qty * price * (dp / 100);
+    }
+    
+    if (props.hasItemTaxPercent) {
+        const tp = parseFloat(item.tax_percent) || 0;
+        const sub = (qty * price) - (parseFloat(item.discount_amount) || 0);
+        item.tax_amount = sub * (tp / 100);
+    }
 };
 
 const removeItem = (index) => {
@@ -194,8 +277,9 @@ const getConversionText = (item) => {
                                     <th class="pb-3 w-24 text-center">Unit</th>
                                     <th v-if="hasItemUnitPrice" class="pb-3 w-24 text-center">Rate</th>
                                     <th v-if="hasItemDiscount" class="pb-3 w-24 text-center">Disc ($)</th>
+                                    <th v-if="hasItemDiscountPercent" class="pb-3 w-36 text-center">Disc (%)</th>
                                     <th v-if="hasItemTax" class="pb-3 w-24 text-center">Tax ($)</th>
-                                    <th v-if="hasItemTaxPercent" class="pb-3 w-24 text-center">Tax (%)</th>
+                                    <th v-if="hasItemTaxPercent" class="pb-3 w-36 text-center">Tax (%)</th>
                                     <th v-if="hasItemUnitPrice" class="pb-3 w-32 text-center">Amount</th>
                                     <th v-if="hasConversionUnit" class="pb-3 w-32 pl-3 text-center">Conv Unit</th>
                                     <th class="pb-3 w-8"></th>
@@ -210,7 +294,7 @@ const getConversionText = (item) => {
                                         <select v-if="isReferenceLinked" v-model="item.item_id" class="pos-input w-full !py-1.5 !px-2 text-sm disabled:opacity-50" disabled required>
                                             <option v-for="i in items" :key="i.id" :value="i.id">{{ i.name }}</option>
                                         </select>
-                                        <select v-else v-model="item.item_id" @change="emit('item-select', item)" class="pos-input w-full !py-1.5 !px-2 text-sm" required>
+                                        <select v-else v-model="item.item_id" @change="handleItemSelect(item)" class="pos-input w-full !py-1.5 !px-2 text-sm" required>
                                             <option value="" disabled>Select Item</option>
                                             <option v-for="i in items" :key="i.id" :value="i.id">{{ i.name }}</option>
                                         </select>
@@ -219,33 +303,37 @@ const getConversionText = (item) => {
                                         {{ item.ref_qty }}
                                     </td>
                                     <td class="py-3 pr-2">
-                                        <input type="number" step="0.01" v-model="item.quantity" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
+                                        <input type="number" step="0.01" v-model="item.quantity" @input="updateItemAmounts(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
                                     </td>
                                     <td class="py-3 pr-2">
                                         <select v-model="item.unit_id" class="pos-input w-full !py-1.5 !px-2 text-sm" :disabled="isReferenceLinked" required>
                                             <option value="" disabled>Unit</option>
-                                            <option v-for="u in units" :key="u.id" :value="u.id">{{ u.name }}</option>
+                                            <option v-for="u in getValidUnits(item.item_id)" :key="u.id" :value="u.id">{{ u.name }}</option>
                                         </select>
                                     </td>
                                     <td v-if="hasItemUnitPrice" class="py-3 pr-2">
-                                        <input type="number" step="0.01" v-model="item.unit_price" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
+                                        <input type="number" step="0.01" v-model="item.unit_price" @input="updateItemAmounts(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
                                     </td>
                                     <td v-if="hasItemDiscount" class="py-3 pr-2">
-                                        <input type="number" step="0.01" v-model="item.discount_amount" class="pos-input w-full !py-1.5 !px-2 text-right text-sm text-red-500">
+                                        <input type="number" step="0.01" v-model="item.discount_amount" @input="updateItemAmounts(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm text-red-500">
+                                    </td>
+                                    <td v-if="hasItemDiscountPercent" class="py-3 pr-2">
+                                        <div class="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 px-2">
+                                            <input type="number" step="0.01" v-model="item.discount_percent" @input="updateItemAmounts(item)" class="w-16 bg-transparent border-none text-right text-sm text-red-500 focus:ring-0 p-1" placeholder="%">
+                                            <span class="text-[10px] font-bold text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-1 min-w-[35px] text-right">${{ (item.discount_amount || 0).toFixed(2) }}</span>
+                                        </div>
                                     </td>
                                     <td v-if="hasItemTax" class="py-3 pr-2">
-                                        <input type="number" step="0.01" v-model="item.tax_amount" class="pos-input w-full !py-1.5 !px-2 text-right text-sm text-indigo-500">
+                                        <input type="number" step="0.01" v-model="item.tax_amount" @input="updateItemAmounts(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm text-indigo-500">
                                     </td>
                                     <td v-if="hasItemTaxPercent" class="py-3 pr-2">
-                                        <input type="number" step="0.01" v-model="item.tax_percent" class="pos-input w-full !py-1.5 !px-2 text-right text-sm text-indigo-500">
+                                        <div class="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 px-2">
+                                            <input type="number" step="0.01" v-model="item.tax_percent" @input="updateItemAmounts(item)" class="w-16 bg-transparent border-none text-right text-sm text-indigo-500 focus:ring-0 p-1" placeholder="%">
+                                            <span class="text-[10px] font-bold text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-1 min-w-[35px] text-right">${{ (item.tax_amount || 0).toFixed(2) }}</span>
+                                        </div>
                                     </td>
                                     <td v-if="hasItemUnitPrice" class="py-3 pr-2 text-sm text-slate-700 dark:text-slate-300 font-bold text-center">
-                                        <span v-if="hasItemTaxPercent">
-                                            {{ (((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)) * (1 + ((parseFloat(item.tax_percent) || 0) / 100))).toFixed(2) }}
-                                        </span>
-                                        <span v-else>
-                                            {{ (((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)) - (parseFloat(item.discount_amount) || 0) + (parseFloat(item.tax_amount) || 0)).toFixed(2) }}
-                                        </span>
+                                        {{ (((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)) - (parseFloat(item.discount_amount) || 0) + (parseFloat(item.tax_amount) || 0)).toFixed(2) }}
                                     </td>
                                     <td v-if="hasConversionUnit" class="py-3 text-xs font-bold text-slate-500 dark:text-slate-400 pl-3 text-center">
                                         {{ getConversionText(item) }}
@@ -270,16 +358,22 @@ const getConversionText = (item) => {
                     </div>
                     <div v-if="hasItemUnitPrice" class="w-full md:w-1/3 flex flex-col justify-end gap-2">
                         <div v-if="hasGlobalAdjustments" class="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
-                            <span>Global Discount ($):</span>
-                            <input type="number" step="0.01" v-model="form.discount_amount" class="pos-input w-24 !py-1 !px-2 text-right text-sm text-red-500">
+                            <span>Global Discount:</span>
+                            <div class="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 px-2 h-8">
+                                <input type="number" step="0.01" v-model="globalDiscountPercent" @input="updateGlobalAmounts" class="w-16 bg-transparent border-none text-right text-sm text-red-500 focus:ring-0 p-0" placeholder="%">
+                                <span class="text-xs font-bold text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-2 min-w-[50px] text-right">${{ (parseFloat(form.discount_amount) || 0).toFixed(2) }}</span>
+                            </div>
                         </div>
                         <div v-if="hasGlobalAdjustments" class="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
-                            <span>Global Tax ($):</span>
-                            <input type="number" step="0.01" v-model="form.tax_amount" class="pos-input w-24 !py-1 !px-2 text-right text-sm text-indigo-500">
+                            <span>Global Tax:</span>
+                            <div class="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-800 px-2 h-8">
+                                <input type="number" step="0.01" v-model="globalTaxPercent" @input="updateGlobalAmounts" class="w-16 bg-transparent border-none text-right text-sm text-indigo-500 focus:ring-0 p-0" placeholder="%">
+                                <span class="text-xs font-bold text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-2 min-w-[50px] text-right">${{ (parseFloat(form.tax_amount) || 0).toFixed(2) }}</span>
+                            </div>
                         </div>
                         <div v-if="hasGlobalAdjustments" class="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
                             <span>Shipping ($):</span>
-                            <input type="number" step="0.01" v-model="form.shipping_amount" class="pos-input w-24 !py-1 !px-2 text-right text-sm text-indigo-500">
+                            <input type="number" step="0.01" v-model="form.shipping_amount" class="pos-input w-[124px] !py-1 !px-2 text-right text-sm text-indigo-500 h-8">
                         </div>
                         <div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 mt-2">
                             <div class="flex justify-between items-center text-lg font-black text-slate-800 dark:text-white">

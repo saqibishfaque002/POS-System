@@ -46,7 +46,7 @@ const form = useForm({
     supplier_id: '',
     reference_id: '',
     date: new Date().toISOString().split('T')[0],
-    due_date: '',
+    due_date: new Date().toISOString().split('T')[0],
     notes: '',
     discount_amount: 0,
     tax_amount: 0,
@@ -146,7 +146,7 @@ const openModal = (pi = null) => {
         form.supplier_id = '';
         form.reference_id = '';
         form.date = new Date().toISOString().split('T')[0];
-        form.due_date = '';
+        form.due_date = new Date().toISOString().split('T')[0];
         form.notes = '';
         form.discount_amount = 0;
         form.tax_amount = 0;
@@ -308,8 +308,8 @@ const columns = computed(() => [
                 date-label="Invoice Date"
                 :has-due-date="true"
                 :has-global-adjustments="true"
-                :has-item-discount="true"
-                :has-item-tax="true"
+                :has-item-discount-percent="true"
+                :has-item-tax-percent="true"
                 :has-item-unit-price="true"
                 :has-reference-qty="true"
                 reference-qty-label="GRN Qty"
