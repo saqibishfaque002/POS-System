@@ -80,6 +80,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/ingredient-items/{ingredientItem}', [\App\Http\Controllers\IngredientController::class, 'destroyIngredientItem'])->name('ingredient-items.destroy');
     });
 
+    // Recipes Management
+    Route::middleware('can:is_admin')->prefix('recipes')->name('recipes.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\RecipeController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\RecipeController::class, 'store'])->name('store');
+        Route::put('/{recipe}', [\App\Http\Controllers\RecipeController::class, 'update'])->name('update');
+        Route::delete('/{recipe}', [\App\Http\Controllers\RecipeController::class, 'destroy'])->name('destroy');
+    });
+
     // User Management
     Route::middleware('can:is_admin')->prefix('users')->name('users.')->group(function () {
         Route::get('/', [\App\Http\Controllers\UserController::class, 'index'])->name('index');
