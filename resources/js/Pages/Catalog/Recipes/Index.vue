@@ -10,6 +10,7 @@ import InputError from '@/Components/InputError.vue';
 const props = defineProps({
     recipes: Array,
     foodItems: Array,
+    propertyItems: Array,
     ingredientItems: Array,
     units: Array,
 });
@@ -35,12 +36,13 @@ const columns = [
 
 const isModalOpen = ref(false);
 const editingRecipe = ref(null);
-const activeTab = ref('standard'); // 'standard' for FoodItem, 'sub' for IngredientItem
+const activeTab = ref('standard'); // 'standard' for FoodItem, 'property' for PropertyItem, 'sub' for IngredientItem
 
 const form = useForm({
     recipeable_id: '',
     recipeable_type: 'App\\Models\\FoodItem',
     total_cost: 0,
+    yield_quantity: 1,
     instructions: '',
     status: 'active',
     items: [],
@@ -52,6 +54,7 @@ const openModal = (recipe = null) => {
         form.recipeable_id = recipe.recipeable_id;
         form.recipeable_type = recipe.recipeable_type;
         form.total_cost = recipe.total_cost;
+        form.yield_quantity = recipe.yield_quantity || 1;
         form.instructions = recipe.instructions || '';
         form.status = recipe.status;
         form.items = recipe.ingredients.map(ing => ({
@@ -60,7 +63,13 @@ const openModal = (recipe = null) => {
             unit_id: ing.unit_id,
             cost: 0 // Ideally fetched from item
         }));
-        activeTab.value = recipe.recipeable_type.includes('FoodItem') ? 'standard' : 'sub';
+        if (recipe.recipeable_type.includes('FoodItem')) {
+            activeTab.value = 'standard';
+        } else if (recipe.recipeable_type.includes('PropertyItem')) {
+            activeTab.value = 'property';
+        } else {
+            activeTab.value = 'sub';
+        }
     } else {
         form.reset();
         form.items = [];
@@ -110,7 +119,15 @@ const calculateTotalCost = () => {
 };
 
 const saveRecipe = () => {
-    form.recipeable_type = activeTab.value === 'standard' ? 'App\\Models\\FoodItem' : 'App\\Models\\IngredientItem';
+    if (activeTab.value === 'standard') {
+        form.recipeable_type = 'App\\Models\\FoodItem';
+        form.yield_quantity = 1;
+    } else if (activeTab.value === 'property') {
+        form.recipeable_type = 'App\\Models\\PropertyItem';
+        form.yield_quantity = 1;
+    } else {
+        form.recipeable_type = 'App\\Models\\IngredientItem';
+    }
     
     if (editingRecipe.value) {
         form.put(route('recipes.update', editingRecipe.value.id), {
@@ -173,7 +190,8 @@ const switchTab = (tab) => {
                             </template>
 
                             <template #cell-type="{ item }">
-                                <span v-if="item.recipeable_type.includes('FoodItem')" class="px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded text-xs font-bold">Standard Recipe</span>
+                                <span v-if="item.recipeable_type.includes('FoodItem')" class="px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded text-xs font-bold">Food Recipe</span>
+                                <span v-else-if="item.recipeable_type.includes('PropertyItem')" class="px-2 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 rounded text-xs font-bold">Property Recipe</span>
                                 <span v-else class="px-2 py-1 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded text-xs font-bold">Sub-Recipe</span>
                             </template>
 
@@ -223,10 +241,13 @@ const switchTab = (tab) => {
                         <!-- Recipe Type Tabs (Only shown when creating new) -->
                         <div v-if="!editingRecipe" class="flex border-b border-slate-200 dark:border-slate-700 mb-6">
                             <button type="button" @click="switchTab('standard')" :class="['px-4 py-2 font-bold text-sm border-b-2 transition-colors', activeTab === 'standard' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400']">
-                                Standard Recipe (Food Item)
+                                Food Recipe
+                            </button>
+                            <button type="button" @click="switchTab('property')" :class="['px-4 py-2 font-bold text-sm border-b-2 transition-colors', activeTab === 'property' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400']">
+                                Property Recipe
                             </button>
                             <button type="button" @click="switchTab('sub')" :class="['px-4 py-2 font-bold text-sm border-b-2 transition-colors', activeTab === 'sub' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400']">
-                                Sub-Recipe (Ingredient Item)
+                                Sub-Recipe
                             </button>
                         </div>
 
@@ -237,17 +258,26 @@ const switchTab = (tab) => {
                                 <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-2 pb-2 border-b border-slate-200 dark:border-slate-700">Target Item</h3>
                                 
                                 <div>
-                                    <InputLabel for="recipeable_id" :value="activeTab === 'standard' ? 'Select Food Item' : 'Select Ingredient (Sub-Recipe)'" />
+                                    <InputLabel for="recipeable_id" :value="activeTab === 'standard' ? 'Select Food Item' : (activeTab === 'property' ? 'Select Property Item' : 'Select Ingredient (Sub-Recipe)')" />
                                     <select id="recipeable_id" v-model="form.recipeable_id" class="pos-input mt-1 block w-full" :disabled="editingRecipe" required>
                                         <option value="">Select an Item...</option>
                                         <template v-if="activeTab === 'standard'">
                                             <option v-for="item in foodItems" :key="item.id" :value="item.id">{{ item.name }}</option>
+                                        </template>
+                                        <template v-else-if="activeTab === 'property'">
+                                            <option v-for="item in propertyItems" :key="item.id" :value="item.id">{{ item.name }}</option>
                                         </template>
                                         <template v-else>
                                             <option v-for="item in ingredientItems" :key="item.id" :value="item.id">{{ item.name }}</option>
                                         </template>
                                     </select>
                                     <InputError :message="form.errors.recipeable_id" class="mt-2" />
+                                </div>
+
+                                <div v-if="activeTab === 'sub'">
+                                    <InputLabel for="yield_quantity" value="Target Item Yield Quantity" />
+                                    <TextInput id="yield_quantity" type="number" step="0.001" min="0.001" v-model="form.yield_quantity" class="w-full mt-1" required />
+                                    <InputError :message="form.errors.yield_quantity" class="mt-2" />
                                 </div>
 
                                 <div>
@@ -306,7 +336,7 @@ const switchTab = (tab) => {
                                             <InputLabel value="Unit" class="sr-only" />
                                             <select v-model="item.unit_id" class="pos-input w-full text-sm py-1.5" required>
                                                 <option value="">Unit...</option>
-                                                <option v-for="u in units" :key="u.id" :value="u.id">{{ u.short_name }}</option>
+                                                <option v-for="u in units" :key="u.id" :value="u.id">{{ u.short_code }}</option>
                                             </select>
                                         </div>
 

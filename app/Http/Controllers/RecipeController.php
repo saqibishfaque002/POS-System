@@ -6,6 +6,7 @@ use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\FoodItem;
 use App\Models\IngredientItem;
+use App\Models\PropertyItem;
 use App\Models\IngredientUnit;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -17,12 +18,14 @@ class RecipeController extends Controller
         $recipes = Recipe::with(['recipeable', 'ingredients.ingredientItem.consumptionUnit', 'ingredients.unit'])->latest()->get();
         
         $foodItems = FoodItem::where('is_active', true)->get();
+        $propertyItems = PropertyItem::where('is_active', true)->get();
         $ingredientItems = IngredientItem::with(['purchaseUnit', 'consumptionUnit'])->where('is_active', true)->get();
         $units = IngredientUnit::all();
 
         return Inertia::render('Catalog/Recipes/Index', [
             'recipes' => $recipes,
             'foodItems' => $foodItems,
+            'propertyItems' => $propertyItems,
             'ingredientItems' => $ingredientItems,
             'units' => $units,
         ]);
@@ -32,8 +35,9 @@ class RecipeController extends Controller
     {
         $validated = $request->validate([
             'recipeable_id' => 'required|integer',
-            'recipeable_type' => 'required|string|in:App\Models\FoodItem,App\Models\IngredientItem',
+            'recipeable_type' => 'required|string|in:App\Models\FoodItem,App\Models\IngredientItem,App\Models\PropertyItem',
             'total_cost' => 'required|numeric|min:0',
+            'yield_quantity' => 'required|numeric|min:0.001',
             'instructions' => 'nullable|string',
             'status' => 'required|in:active,inactive',
             'items' => 'required|array|min:1',
@@ -53,6 +57,7 @@ class RecipeController extends Controller
             'recipeable_id' => $validated['recipeable_id'],
             'recipeable_type' => $validated['recipeable_type'],
             'total_cost' => $validated['total_cost'],
+            'yield_quantity' => $validated['yield_quantity'],
             'instructions' => $validated['instructions'],
             'status' => $validated['status'],
         ]);
@@ -72,6 +77,7 @@ class RecipeController extends Controller
     {
         $validated = $request->validate([
             'total_cost' => 'required|numeric|min:0',
+            'yield_quantity' => 'required|numeric|min:0.001',
             'instructions' => 'nullable|string',
             'status' => 'required|in:active,inactive',
             'items' => 'required|array|min:1',
@@ -82,6 +88,7 @@ class RecipeController extends Controller
 
         $recipe->update([
             'total_cost' => $validated['total_cost'],
+            'yield_quantity' => $validated['yield_quantity'],
             'instructions' => $validated['instructions'],
             'status' => $validated['status'],
         ]);
