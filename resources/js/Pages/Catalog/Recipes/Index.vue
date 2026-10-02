@@ -13,6 +13,7 @@ const props = defineProps({
     propertyItems: Array,
     ingredientItems: Array,
     units: Array,
+    orderTypes: Array,
 });
 
 // For theme toggling
@@ -61,6 +62,7 @@ const openModal = (recipe = null) => {
             ingredient_item_id: ing.ingredient_item_id,
             quantity: ing.quantity,
             unit_id: ing.unit_id,
+            order_type_ids: ing.order_types ? ing.order_types.map(ot => ot.id) : [],
             cost: 0 // Ideally fetched from item
         }));
         if (recipe.recipeable_type.includes('FoodItem')) {
@@ -88,7 +90,17 @@ const addIngredient = () => {
         ingredient_item_id: '',
         quantity: 1,
         unit_id: '',
+        order_type_ids: [],
     });
+};
+
+const toggleOrderType = (item, orderTypeId) => {
+    const index = item.order_type_ids.indexOf(orderTypeId);
+    if (index > -1) {
+        item.order_type_ids.splice(index, 1);
+    } else {
+        item.order_type_ids.push(orderTypeId);
+    }
 };
 
 const removeIngredient = (index) => {
@@ -295,7 +307,7 @@ const switchTab = (tab) => {
                                 </div>
 
                                 <div class="bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50 mt-4">
-                                    <span class="text-sm font-bold text-indigo-600 dark:text-indigo-400 block mb-1">Total Recipe Cost</span>
+                                    <span class="text-sm font-bold text-indigo-600 dark:text-indigo-400 block mb-1">Total Max Cost</span>
                                     <span class="text-3xl font-black text-indigo-700 dark:text-indigo-300">${{ form.total_cost }}</span>
                                 </div>
                             </div>
@@ -316,35 +328,59 @@ const switchTab = (tab) => {
                                         No ingredients added yet. Click "+ Add Ingredient" to start.
                                     </div>
                                     
-                                    <div v-for="(item, index) in form.items" :key="index" class="flex gap-3 items-start bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
-                                        <div class="flex-1">
-                                            <InputLabel :value="'Ingredient ' + (index + 1)" class="sr-only" />
-                                            <select v-model="item.ingredient_item_id" @change="onIngredientChange(index)" class="pos-input w-full text-sm py-1.5" required>
-                                                <option value="">Select Ingredient...</option>
-                                                <option v-for="ing in ingredientItems" :key="ing.id" :value="ing.id">
-                                                    {{ ing.name }} (Cost: ${{ ing.base_price }})
-                                                </option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="w-24">
-                                            <InputLabel value="Qty" class="sr-only" />
-                                            <TextInput type="number" step="0.001" min="0" v-model="item.quantity" @input="calculateTotalCost" class="w-full text-sm py-1.5 text-right" placeholder="Qty" required />
-                                        </div>
-                                        
-                                        <div class="w-32">
-                                            <InputLabel value="Unit" class="sr-only" />
-                                            <select v-model="item.unit_id" class="pos-input w-full text-sm py-1.5" required>
-                                                <option value="">Unit...</option>
-                                                <option v-for="u in units" :key="u.id" :value="u.id">{{ u.short_code }}</option>
-                                            </select>
-                                        </div>
+                                    <div v-for="(item, index) in form.items" :key="index" class="flex flex-col gap-2 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                                        <div class="flex gap-3 items-start">
+                                            <div class="flex-1">
+                                                <InputLabel :value="'Ingredient ' + (index + 1)" class="sr-only" />
+                                                <select v-model="item.ingredient_item_id" @change="onIngredientChange(index)" class="pos-input w-full text-sm py-1.5" required>
+                                                    <option value="">Select Ingredient...</option>
+                                                    <option v-for="ing in ingredientItems" :key="ing.id" :value="ing.id">
+                                                        {{ ing.name }} (Cost: ${{ ing.base_price }})
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            
+                                            <div class="w-24">
+                                                <InputLabel value="Qty" class="sr-only" />
+                                                <TextInput type="number" step="0.001" min="0" v-model="item.quantity" @input="calculateTotalCost" class="w-full text-sm py-1.5 text-right" placeholder="Qty" required />
+                                            </div>
+                                            
+                                            <div class="w-32">
+                                                <InputLabel value="Unit" class="sr-only" />
+                                                <select v-model="item.unit_id" class="pos-input w-full text-sm py-1.5" required>
+                                                    <option value="">Unit...</option>
+                                                    <option v-for="u in units" :key="u.id" :value="u.id">{{ u.short_code }}</option>
+                                                </select>
+                                            </div>
 
-                                        <button type="button" @click="removeIngredient(index)" class="mt-1 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                            </svg>
-                                        </button>
+                                            <button type="button" @click="removeIngredient(index)" class="mt-1 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/50">
+                                            <InputLabel value="Applicable For:" class="text-xs shrink-0 text-slate-500" />
+                                            <div class="flex flex-wrap gap-2">
+                                                <button 
+                                                    v-for="ot in orderTypes" 
+                                                    :key="ot.id" 
+                                                    type="button"
+                                                    @click="toggleOrderType(item, ot.id)"
+                                                    :class="[
+                                                        'px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-200',
+                                                        item.order_type_ids.includes(ot.id) 
+                                                            ? 'bg-indigo-100 text-indigo-700 border-indigo-200 shadow-sm dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-700/50' 
+                                                            : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-700'
+                                                    ]"
+                                                >
+                                                    {{ ot.name }}
+                                                </button>
+                                            </div>
+                                            <span class="text-xs text-slate-400 italic ml-auto" v-if="item.order_type_ids.length === 0">
+                                                * Applies to ALL order types
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

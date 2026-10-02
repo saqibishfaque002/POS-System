@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Recipe;
-use App\Models\RecipeIngredient;
 use App\Models\FoodItem;
 use App\Models\IngredientItem;
 use App\Models\PropertyItem;
 use App\Models\IngredientUnit;
+use App\Models\OrderType;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -15,12 +15,13 @@ class RecipeController extends Controller
 {
     public function index()
     {
-        $recipes = Recipe::with(['recipeable', 'ingredients.ingredientItem.consumptionUnit', 'ingredients.unit'])->latest()->get();
+        $recipes = Recipe::with(['recipeable', 'ingredients.ingredientItem.consumptionUnit', 'ingredients.unit', 'ingredients.orderTypes'])->latest()->get();
         
         $foodItems = FoodItem::where('is_active', true)->get();
         $propertyItems = PropertyItem::where('is_active', true)->get();
         $ingredientItems = IngredientItem::with(['purchaseUnit', 'consumptionUnit'])->where('is_active', true)->get();
         $units = IngredientUnit::all();
+        $orderTypes = OrderType::where('is_active', true)->get();
 
         return Inertia::render('Catalog/Recipes/Index', [
             'recipes' => $recipes,
@@ -28,6 +29,7 @@ class RecipeController extends Controller
             'propertyItems' => $propertyItems,
             'ingredientItems' => $ingredientItems,
             'units' => $units,
+            'orderTypes' => $orderTypes,
         ]);
     }
 
@@ -44,6 +46,8 @@ class RecipeController extends Controller
             'items.*.ingredient_item_id' => 'required|exists:ingredient_items,id',
             'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.unit_id' => 'required|exists:ingredient_units,id',
+            'items.*.order_type_ids' => 'nullable|array',
+            'items.*.order_type_ids.*' => 'exists:order_types,id',
         ]);
 
         // Check if recipe already exists for this item
@@ -63,11 +67,15 @@ class RecipeController extends Controller
         ]);
 
         foreach ($validated['items'] as $item) {
-            $recipe->ingredients()->create([
+            $ingredient = $recipe->ingredients()->create([
                 'ingredient_item_id' => $item['ingredient_item_id'],
                 'quantity' => $item['quantity'],
                 'unit_id' => $item['unit_id'],
             ]);
+
+            if (!empty($item['order_type_ids'])) {
+                $ingredient->orderTypes()->sync($item['order_type_ids']);
+            }
         }
 
         return redirect()->back()->with('success', 'Recipe created successfully.');
@@ -84,6 +92,8 @@ class RecipeController extends Controller
             'items.*.ingredient_item_id' => 'required|exists:ingredient_items,id',
             'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.unit_id' => 'required|exists:ingredient_units,id',
+            'items.*.order_type_ids' => 'nullable|array',
+            'items.*.order_type_ids.*' => 'exists:order_types,id',
         ]);
 
         $recipe->update([
@@ -96,11 +106,15 @@ class RecipeController extends Controller
         $recipe->ingredients()->delete();
 
         foreach ($validated['items'] as $item) {
-            $recipe->ingredients()->create([
+            $ingredient = $recipe->ingredients()->create([
                 'ingredient_item_id' => $item['ingredient_item_id'],
                 'quantity' => $item['quantity'],
                 'unit_id' => $item['unit_id'],
             ]);
+
+            if (!empty($item['order_type_ids'])) {
+                $ingredient->orderTypes()->sync($item['order_type_ids']);
+            }
         }
 
         return redirect()->back()->with('success', 'Recipe updated successfully.');

@@ -27,4 +27,9 @@ class RecipeIngredient extends Model
     {
         return $this->belongsTo(IngredientUnit::class, 'unit_id');
     }
+
+    public function orderTypes()
+    {
+        return $this->belongsToMany(OrderType::class);
+    }
 }
