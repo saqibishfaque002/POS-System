@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Head, useForm, Link } from '@inertiajs/vue3';
 import InventorySidebar from '@/Components/InventorySidebar.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -40,6 +40,7 @@ const editingRecipe = ref(null);
 const activeTab = ref('standard'); // 'standard' for FoodItem, 'property' for PropertyItem, 'sub' for IngredientItem
 
 const form = useForm({
+    selected_base_item_id: '',
     recipeable_id: '',
     recipeable_type: 'App\\Models\\FoodItem',
     total_cost: 0,
@@ -65,8 +66,15 @@ const openModal = (recipe = null) => {
             order_type_ids: ing.order_types ? ing.order_types.map(ot => ot.id) : [],
             cost: 0 // Ideally fetched from item
         }));
-        if (recipe.recipeable_type.includes('FoodItem')) {
+        if (recipe.recipeable_type.includes('FoodItemVariation')) {
             activeTab.value = 'standard';
+            const foodItem = props.foodItems.find(f => f.variations.some(v => v.id === parseInt(recipe.recipeable_id)));
+            if (foodItem) {
+                form.selected_base_item_id = foodItem.id;
+            }
+        } else if (recipe.recipeable_type.includes('FoodItem')) {
+            activeTab.value = 'standard';
+            form.selected_base_item_id = recipe.recipeable_id;
         } else if (recipe.recipeable_type.includes('PropertyItem')) {
             activeTab.value = 'property';
         } else {
@@ -74,10 +82,28 @@ const openModal = (recipe = null) => {
         }
     } else {
         form.reset();
+        form.selected_base_item_id = '';
         form.items = [];
     }
     isModalOpen.value = true;
 };
+
+const selectedFoodItem = computed(() => {
+    if (!form.selected_base_item_id) return null;
+    return props.foodItems.find(i => i.id === parseInt(form.selected_base_item_id));
+});
+
+watch(() => form.selected_base_item_id, (newVal) => {
+    if (activeTab.value !== 'standard' || editingRecipe.value) return;
+    const item = selectedFoodItem.value;
+    if (item && item.variations && item.variations.length > 0) {
+        form.recipeable_id = '';
+        form.recipeable_type = 'App\\Models\\FoodItemVariation';
+    } else {
+        form.recipeable_id = newVal;
+        form.recipeable_type = 'App\\Models\\FoodItem';
+    }
+});
 
 const closeModal = () => {
     isModalOpen.value = false;
@@ -132,8 +158,13 @@ const calculateTotalCost = () => {
 
 const saveRecipe = () => {
     if (activeTab.value === 'standard') {
-        form.recipeable_type = 'App\\Models\\FoodItem';
         form.yield_quantity = 1;
+        if (selectedFoodItem.value && selectedFoodItem.value.variations && selectedFoodItem.value.variations.length > 0) {
+            form.recipeable_type = 'App\\Models\\FoodItemVariation';
+        } else {
+            form.recipeable_type = 'App\\Models\\FoodItem';
+            form.recipeable_id = form.selected_base_item_id;
+        }
     } else if (activeTab.value === 'property') {
         form.recipeable_type = 'App\\Models\\PropertyItem';
         form.yield_quantity = 1;
@@ -155,6 +186,7 @@ const saveRecipe = () => {
 const switchTab = (tab) => {
     activeTab.value = tab;
     form.recipeable_id = '';
+    form.selected_base_item_id = '';
 };
 </script>
 
@@ -197,12 +229,13 @@ const switchTab = (tab) => {
                             
                             <template #cell-item_name="{ item }">
                                 <span class="font-bold text-slate-700 dark:text-slate-300">
-                                    {{ item.recipeable?.name || 'Unknown Item' }}
+                                    {{ item.recipeable?.food_item?.name ? `${item.recipeable.food_item.name} (${item.recipeable.variation?.name})` : (item.recipeable?.name || 'Unknown Item') }}
                                 </span>
                             </template>
 
                             <template #cell-type="{ item }">
-                                <span v-if="item.recipeable_type.includes('FoodItem')" class="px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded text-xs font-bold">Food Recipe</span>
+                                <span v-if="item.recipeable_type.includes('FoodItemVariation')" class="px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded text-xs font-bold">Variation Recipe</span>
+                                <span v-else-if="item.recipeable_type.includes('FoodItem')" class="px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 rounded text-xs font-bold">Food Recipe</span>
                                 <span v-else-if="item.recipeable_type.includes('PropertyItem')" class="px-2 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 rounded text-xs font-bold">Property Recipe</span>
                                 <span v-else class="px-2 py-1 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded text-xs font-bold">Sub-Recipe</span>
                             </template>
@@ -269,14 +302,29 @@ const switchTab = (tab) => {
                             <div class="md:col-span-1 space-y-4">
                                 <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-2 pb-2 border-b border-slate-200 dark:border-slate-700">Target Item</h3>
                                 
-                                <div>
-                                    <InputLabel for="recipeable_id" :value="activeTab === 'standard' ? 'Select Food Item' : (activeTab === 'property' ? 'Select Property Item' : 'Select Ingredient (Sub-Recipe)')" />
+                                <div v-if="activeTab === 'standard'">
+                                    <InputLabel for="selected_base_item_id" value="Select Food Item" />
+                                    <select id="selected_base_item_id" v-model="form.selected_base_item_id" class="pos-input mt-1 block w-full" :disabled="editingRecipe" required>
+                                        <option value="">Select an Item...</option>
+                                        <option v-for="item in foodItems" :key="item.id" :value="item.id">{{ item.name }}</option>
+                                    </select>
+                                    <InputError :message="form.errors.recipeable_id" class="mt-2" />
+                                </div>
+                                
+                                <div v-if="activeTab === 'standard' && selectedFoodItem && selectedFoodItem.variations && selectedFoodItem.variations.length > 0">
+                                    <InputLabel for="variation_id" value="Select Variation" class="mt-4" />
+                                    <select id="variation_id" v-model="form.recipeable_id" class="pos-input mt-1 block w-full" :disabled="editingRecipe" required>
+                                        <option value="">Select Variation...</option>
+                                        <option v-for="v in selectedFoodItem.variations" :key="v.id" :value="v.id">{{ v.variation?.name || 'Variation' }}</option>
+                                    </select>
+                                    <InputError :message="form.errors.recipeable_id" class="mt-2" />
+                                </div>
+
+                                <div v-if="activeTab !== 'standard'">
+                                    <InputLabel for="recipeable_id" :value="activeTab === 'property' ? 'Select Property Item' : 'Select Ingredient (Sub-Recipe)'" />
                                     <select id="recipeable_id" v-model="form.recipeable_id" class="pos-input mt-1 block w-full" :disabled="editingRecipe" required>
                                         <option value="">Select an Item...</option>
-                                        <template v-if="activeTab === 'standard'">
-                                            <option v-for="item in foodItems" :key="item.id" :value="item.id">{{ item.name }}</option>
-                                        </template>
-                                        <template v-else-if="activeTab === 'property'">
+                                        <template v-if="activeTab === 'property'">
                                             <option v-for="item in propertyItems" :key="item.id" :value="item.id">{{ item.name }}</option>
                                         </template>
                                         <template v-else>

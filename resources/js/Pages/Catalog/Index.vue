@@ -10,7 +10,7 @@ const props = defineProps({
     foodItems: Array,
     propertyGroups: Array,
     propertyItems: Array,
-    variations: Array,
+    globalVariations: Array,
 });
 
 // Theme logic
@@ -42,7 +42,7 @@ const tabs = [
     { id: 'foodItems', label: 'Food Items' },
     { id: 'propertyGroups', label: 'Property Groups' },
     { id: 'propertyItems', label: 'Property Items' },
-    { id: 'variations', label: 'Variations' },
+    { id: 'globalVariations', label: 'Global Variations' },
 ];
 
 const tabData = computed(() => {
@@ -51,7 +51,7 @@ const tabData = computed(() => {
         case 'foodItems': return props.foodItems;
         case 'propertyGroups': return props.propertyGroups;
         case 'propertyItems': return props.propertyItems;
-        case 'variations': return props.variations;
+        case 'globalVariations': return props.globalVariations;
         default: return [];
     }
 });
@@ -84,12 +84,9 @@ const columns = computed(() => {
             { key: 'extra_price', label: 'Extra Price' },
             { key: 'is_active', label: 'Active' },
         ];
-        case 'variations': return [
+        case 'globalVariations': return [
             { key: 'id', label: 'ID' },
-            { key: 'food_item_id', label: 'Food Item' },
             { key: 'name', label: 'Name' },
-            { key: 'sku', label: 'SKU' },
-            { key: 'price', label: 'Price' },
             { key: 'is_active', label: 'Active' },
         ];
         default: return [];
@@ -110,7 +107,9 @@ const formFields = computed(() => {
         case 'foodItems': return [
             { key: 'food_group_id', label: 'Food Group', type: 'select', options: props.foodGroups.map(g => ({value: g.id, label: g.name})) },
             { key: 'name', label: 'Name', type: 'text' },
-            { key: 'base_price', label: 'Base Price', type: 'number' },
+            { key: 'has_variations', label: 'Item Has Variations?', type: 'checkbox' },
+            { key: 'base_price', label: 'Base Price', type: 'number', showIf: (form) => !form.has_variations },
+            { key: 'custom_variations', label: 'Variations', type: 'custom_variations', showIf: (form) => form.has_variations },
             { key: 'description', label: 'Description', type: 'text', required: false },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
         ];
@@ -125,11 +124,8 @@ const formFields = computed(() => {
             { key: 'extra_price', label: 'Extra Price', type: 'number' },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
         ];
-        case 'variations': return [
-            { key: 'food_item_id', label: 'Food Item', type: 'select', options: props.foodItems.map(g => ({value: g.id, label: g.name})) },
+        case 'globalVariations': return [
             { key: 'name', label: 'Name (e.g. Large)', type: 'text' },
-            { key: 'sku', label: 'SKU', type: 'text', required: false },
-            { key: 'price', label: 'Price', type: 'number' },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
         ];
         default: return [];
@@ -141,7 +137,15 @@ const openModal = (item = null) => {
     const initialData = {};
     formFields.value.forEach(field => {
         if (field.type === 'checkbox') {
-            initialData[field.key] = item ? !!item[field.key] : true;
+            if (field.key === 'has_variations') {
+                initialData[field.key] = item && item.variations && item.variations.length > 0;
+            } else {
+                initialData[field.key] = item ? !!item[field.key] : true;
+            }
+        } else if (field.type === 'custom_variations') {
+            initialData['variations'] = item && item.variations && item.variations.length > 0 
+                ? item.variations.map(v => ({ id: v.id, variation_id: v.variation_id, price: v.price, sku: v.sku })) 
+                : [{ variation_id: '', price: 0, sku: '' }];
         } else {
             initialData[field.key] = item ? item[field.key] : '';
         }
@@ -161,7 +165,7 @@ const getRoutePrefix = () => {
         case 'foodItems': return 'food-items';
         case 'propertyGroups': return 'property-groups';
         case 'propertyItems': return 'property-items';
-        case 'variations': return 'variations';
+        case 'globalVariations': return 'variations';
     }
 };
 
@@ -218,7 +222,7 @@ const deleteItem = (item) => {
 
                 <!-- Content -->
                 <main class="flex-1">
-                    <DataTable :title="tabs.find(t => t.id === activeTab).label" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
+                    <DataTable :title="tabs.find(t => t.id === activeTab)?.label || 'Catalog'" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
                         <template #actions>
                             <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
                                 + Add New
@@ -267,6 +271,7 @@ const deleteItem = (item) => {
         :form-fields="formFields"
         :form="form"
         :tabs="tabs"
+        :global-variations="globalVariations"
         @close="closeModal"
         @submit="submitForm"
     />

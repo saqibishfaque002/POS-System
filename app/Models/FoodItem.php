@@ -23,6 +23,6 @@ class FoodItem extends Model
 
     public function variations()
     {
-        return $this->hasMany(Variation::class);
+        return $this->hasMany(FoodItemVariation::class);
     }
 }

@@ -8,12 +8,12 @@ use App\Models\FoodGroup;
 use App\Models\FoodItem;
 use App\Models\PropertyGroup;
 use App\Models\PropertyItem;
+use App\Models\FoodItemVariation;
 use App\Models\Variation;
 use App\Http\Requests\Catalog\FoodGroupRequest;
 use App\Http\Requests\Catalog\FoodItemRequest;
 use App\Http\Requests\Catalog\PropertyGroupRequest;
 use App\Http\Requests\Catalog\PropertyItemRequest;
-use App\Http\Requests\Catalog\VariationRequest;
 
 class CatalogController extends Controller
 {
@@ -21,10 +21,10 @@ class CatalogController extends Controller
     {
         return Inertia::render('Catalog/Index', [
             'foodGroups' => FoodGroup::all(),
-            'foodItems' => FoodItem::with('foodGroup')->get(),
+            'foodItems' => FoodItem::with(['foodGroup', 'variations.variation'])->get(),
             'propertyGroups' => PropertyGroup::all(),
             'propertyItems' => PropertyItem::with('propertyGroup')->get(),
-            'variations' => Variation::with('foodItem')->get(),
+            'globalVariations' => Variation::all(),
         ]);
     }
 
@@ -44,11 +44,48 @@ class CatalogController extends Controller
 
     // Food Item
     public function storeFoodItem(FoodItemRequest $request) {
-        FoodItem::create($request->validated());
+        $validated = $request->validated();
+        $foodItem = FoodItem::create([
+            'food_group_id' => $validated['food_group_id'],
+            'name' => $validated['name'],
+            'base_price' => $validated['has_variations'] ? 0 : $validated['base_price'],
+            'description' => $validated['description'] ?? null,
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
+
+        if ($validated['has_variations'] && !empty($validated['variations'])) {
+            foreach ($validated['variations'] as $v) {
+                $foodItem->variations()->create([
+                    'variation_id' => $v['variation_id'],
+                    'price' => $v['price'],
+                    'sku' => $v['sku'] ?? null,
+                    'is_active' => true,
+                ]);
+            }
+        }
         return back();
     }
     public function updateFoodItem(FoodItemRequest $request, FoodItem $foodItem) {
-        $foodItem->update($request->validated());
+        $validated = $request->validated();
+        $foodItem->update([
+            'food_group_id' => $validated['food_group_id'],
+            'name' => $validated['name'],
+            'base_price' => $validated['has_variations'] ? 0 : $validated['base_price'],
+            'description' => $validated['description'] ?? null,
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
+
+        $foodItem->variations()->delete();
+        if ($validated['has_variations'] && !empty($validated['variations'])) {
+            foreach ($validated['variations'] as $v) {
+                $foodItem->variations()->create([
+                    'variation_id' => $v['variation_id'],
+                    'price' => $v['price'],
+                    'sku' => $v['sku'] ?? null,
+                    'is_active' => true,
+                ]);
+            }
+        }
         return back();
     }
     public function destroyFoodItem(FoodItem $foodItem) {
@@ -84,13 +121,15 @@ class CatalogController extends Controller
         return back();
     }
 
-    // Variation
-    public function storeVariation(VariationRequest $request) {
-        Variation::create($request->validated());
+    // Global Variation
+    public function storeVariation(Request $request) {
+        $data = $request->validate(['name' => 'required|string|unique:variations,name', 'is_active' => 'boolean']);
+        Variation::create($data);
         return back();
     }
-    public function updateVariation(VariationRequest $request, Variation $variation) {
-        $variation->update($request->validated());
+    public function updateVariation(Request $request, Variation $variation) {
+        $data = $request->validate(['name' => 'required|string|unique:variations,name,'.$variation->id, 'is_active' => 'boolean']);
+        $variation->update($data);
         return back();
     }
     public function destroyVariation(Variation $variation) {

@@ -17,7 +17,7 @@ class RecipeController extends Controller
     {
         $recipes = Recipe::with(['recipeable', 'ingredients.ingredientItem.consumptionUnit', 'ingredients.unit', 'ingredients.orderTypes'])->latest()->get();
         
-        $foodItems = FoodItem::where('is_active', true)->get();
+        $foodItems = FoodItem::with('variations.variation')->where('is_active', true)->get();
         $propertyItems = PropertyItem::where('is_active', true)->get();
         $ingredientItems = IngredientItem::with(['purchaseUnit', 'consumptionUnit'])->where('is_active', true)->get();
         $units = IngredientUnit::all();
@@ -37,7 +37,7 @@ class RecipeController extends Controller
     {
         $validated = $request->validate([
             'recipeable_id' => 'required|integer',
-            'recipeable_type' => 'required|string|in:App\Models\FoodItem,App\Models\IngredientItem,App\Models\PropertyItem',
+            'recipeable_type' => 'required|string|in:App\Models\FoodItem,App\Models\IngredientItem,App\Models\PropertyItem,App\Models\FoodItemVariation',
             'total_cost' => 'required|numeric|min:0',
             'yield_quantity' => 'required|numeric|min:0.001',
             'instructions' => 'nullable|string',
@@ -84,6 +84,7 @@ class RecipeController extends Controller
     public function update(Request $request, Recipe $recipe)
     {
         $validated = $request->validate([
+            'recipeable_type' => 'nullable|string|in:App\Models\FoodItem,App\Models\IngredientItem,App\Models\PropertyItem,App\Models\FoodItemVariation',
             'total_cost' => 'required|numeric|min:0',
             'yield_quantity' => 'required|numeric|min:0.001',
             'instructions' => 'nullable|string',

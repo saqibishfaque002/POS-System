@@ -57,7 +57,7 @@ const tabs = [
     { id: 'foodItems', label: 'Food Items', route: 'catalog.index' },
     { id: 'propertyGroups', label: 'Property Groups', route: 'catalog.index' },
     { id: 'propertyItems', label: 'Property Items', route: 'catalog.index' },
-    { id: 'variations', label: 'Variations', route: 'catalog.index' },
+    { id: 'globalVariations', label: 'Global Variations', route: 'catalog.index' },
 ];
 const ingredientTabs = [
     { id: 'ingredientUnits', label: 'Ingredient Units', route: 'ingredients.index' },
