@@ -178,12 +178,20 @@ const switchTab = (tab) => {
     form.recipeable_id = '';
     form.selected_base_item_id = '';
 };
+
+const deleteRecipe = (recipe) => {
+    if (confirm('Are you sure you want to delete this recipe?')) {
+        router.delete(route('recipes.destroy', recipe.id), {
+            preserveScroll: true
+        });
+    }
+};
 </script>
 
 <template>
     <InventoryLayout title="Recipes & BOM" headerColorClass="border-t-indigo-500">
         <div class="dashboard-card p-6 border-t-4 border-t-indigo-500">
-            <DataTable title="Recipes & BOM" :data="recipes" :columns="columns">
+            <DataTable title="Recipes & BOM" :data="recipes" :columns="columns" @edit="openModal" @delete="deleteRecipe">
                 <template #actions>
                     <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm !bg-indigo-600 hover:!bg-indigo-700 dark:!bg-indigo-600 dark:hover:!bg-indigo-500">
                         + Create Recipe
@@ -220,12 +228,6 @@ const switchTab = (tab) => {
                                     :class="item.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'">
                                     {{ item.status.toUpperCase() }}
                                 </span>
-                            </template>
-                            
-                            <template #cell-actions="{ item }">
-                                <div class="flex gap-2 justify-end">
-                                    <button @click="openModal(item)" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</button>
-                                </div>
                             </template>
                         </DataTable>
         </div>
