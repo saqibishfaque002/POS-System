@@ -93,13 +93,6 @@ const ingredientTabs = [
                             {{ tab.label }}
                         </Link>
                     </template>
-                    <Link :href="route('recipes.index')"
-                        :class="[
-                            'block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
-                            route().current('recipes.*') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                        ]">
-                        Recipes & BOM
-                    </Link>
                 </div>
             </div>
 
@@ -126,6 +119,20 @@ const ingredientTabs = [
                             {{ tab.label }}
                         </Link>
                     </template>
+                    <Link :href="route('recipes.index')"
+                        :class="[
+                            'block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
+                            route().current('recipes.*') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        ]">
+                        Recipes & BOM
+                    </Link>
+                    <Link :href="route('production.index')"
+                        :class="[
+                            'block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
+                            route().current('production.*') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        ]">
+                        Kitchen Production
+                    </Link>
                 </div>
             </div>
 

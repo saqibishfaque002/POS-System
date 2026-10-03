@@ -135,12 +135,21 @@ const onIngredientChange = (index) => {
 
 const calculateTotalCost = () => {
     let total = 0;
-    form.items.forEach(ing => {
+    form.items.forEach((ing, index) => {
         const item = props.ingredientItems.find(i => i.id === parseInt(ing.ingredient_item_id));
         if (item) {
-            // Very simplified cost calculation based on base_price. 
-            // In a real scenario, this would use moving average cost or proper unit conversions.
-            total += parseFloat(item.base_price || 0) * parseFloat(ing.quantity || 0);
+            const conversionQty = parseFloat(item.conversion_qty || 1);
+            const consumptionQty = parseFloat(item.consumption_qty || 1);
+            const basePrice = parseFloat(item.base_price || 0);
+            
+            // Cost per 1 consumption unit
+            const costPerConsumptionUnit = basePrice / (conversionQty / consumptionQty);
+            
+            const qty = parseFloat(ing.quantity || 0);
+            const lineCost = costPerConsumptionUnit * qty;
+            
+            total += lineCost;
+            form.items[index].cost = lineCost.toFixed(2);
         }
     });
     form.total_cost = total.toFixed(2);
@@ -346,7 +355,7 @@ const deleteRecipe = (recipe) => {
                                                 <select v-model="item.ingredient_item_id" @change="onIngredientChange(index)" class="pos-input w-full text-sm py-1.5" required>
                                                     <option value="">Select Ingredient...</option>
                                                     <option v-for="ing in ingredientItems" :key="ing.id" :value="ing.id">
-                                                        {{ ing.name }} (Cost: ${{ ing.base_price }})
+                                                        {{ ing.name }}
                                                     </option>
                                                 </select>
                                             </div>
@@ -362,6 +371,10 @@ const deleteRecipe = (recipe) => {
                                                     <option value="">Unit...</option>
                                                     <option v-for="u in units" :key="u.id" :value="u.id">{{ u.short_code }}</option>
                                                 </select>
+                                            </div>
+
+                                            <div class="w-24 flex items-center justify-end px-2">
+                                                <span class="text-sm font-bold text-slate-700 dark:text-slate-300">${{ item.cost || '0.00' }}</span>
                                             </div>
 
                                             <button type="button" @click="removeIngredient(index)" class="mt-1 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">

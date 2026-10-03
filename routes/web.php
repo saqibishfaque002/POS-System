@@ -170,6 +170,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/sale-returns/{sale_return}/status', [\App\Http\Controllers\SaleReturnController::class, 'updateStatus'])->name('sale-returns.status');
         Route::get('/sale-returns/{sale_return}/print', [\App\Http\Controllers\SaleReturnController::class, 'print'])->name('sale-returns.print');
     });
+
+    // Production Module
+    Route::prefix('production')->name('production.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ProductionController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\ProductionController::class, 'store'])->name('store');
+        Route::put('/{production}', [\App\Http\Controllers\ProductionController::class, 'update'])->name('update');
+        Route::delete('/{production}', [\App\Http\Controllers\ProductionController::class, 'destroy'])->name('destroy');
+        Route::patch('/{production}/status', [\App\Http\Controllers\ProductionController::class, 'updateStatus'])->name('status');
+    });
 });
 
 Route::get('/', function () {
