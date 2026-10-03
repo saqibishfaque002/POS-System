@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
-import InventoryLayout from '@/Layouts/InventoryLayout.vue';
+import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import ProductionFormModal from './Components/ProductionFormModal.vue';
 import CompleteProductionModal from './Components/CompleteProductionModal.vue';
@@ -53,7 +53,7 @@ const markAsCompleted = (production) => {
 <template>
     <Head title="Kitchen Production" />
 
-    <InventoryLayout title="Kitchen Production" headerColorClass="border-t-indigo-500">
+    <AppLayout title="Kitchen Production" headerColorClass="border-t-indigo-500">
         <div class="dashboard-card p-6 border-t-4 border-t-indigo-500">
             <DataTable
                 :data="productions"
@@ -118,5 +118,5 @@ const markAsCompleted = (production) => {
             @close="isCompleteModalOpen = false"
             @completed="isCompleteModalOpen = false"
         />
-    </InventoryLayout>
+    </AppLayout>
 </template>

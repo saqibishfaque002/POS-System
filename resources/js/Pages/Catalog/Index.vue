@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
-import InventoryLayout from '@/Layouts/InventoryLayout.vue';
+import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import InventorySidebar from '@/Components/InventorySidebar.vue';
 import CatalogFormModal from './Components/CatalogFormModal.vue';
@@ -170,7 +170,7 @@ const deleteItem = (item) => {
 </script>
 
 <template>
-    <InventoryLayout title="Catalog Management" headerColorClass="border-t-indigo-500">
+    <AppLayout title="Catalog Management" headerColorClass="border-t-indigo-500">
         <template #sidebar>
             <InventorySidebar v-model:activeTab="activeTab" />
         </template>
@@ -227,5 +227,5 @@ const deleteItem = (item) => {
                 @submit="submitForm"
             />
         </template>
-    </InventoryLayout>
+    </AppLayout>
 </template>

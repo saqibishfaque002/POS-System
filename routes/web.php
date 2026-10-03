@@ -169,6 +169,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('sale-returns', \App\Http\Controllers\SaleReturnController::class)->except(['create', 'show', 'edit']);
         Route::patch('/sale-returns/{sale_return}/status', [\App\Http\Controllers\SaleReturnController::class, 'updateStatus'])->name('sale-returns.status');
         Route::get('/sale-returns/{sale_return}/print', [\App\Http\Controllers\SaleReturnController::class, 'print'])->name('sale-returns.print');
+        
+        Route::resource('suppliers', \App\Http\Controllers\SupplierController::class)->except(['create', 'show', 'edit']);
     });
 
     // Production Module
