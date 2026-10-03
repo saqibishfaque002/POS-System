@@ -183,19 +183,11 @@ const formFields = computed(() => {
         ];
         case 'branches': return [
             { key: 'company_id', label: 'Company', type: 'select', options: props.companies.map(c => ({value: c.id, label: c.name})) },
-            { key: 'country_id', label: 'Country (Filter)', type: 'select', options: props.countries.map(g => ({value: g.id, label: g.name})), virtual: true },
-            { 
-                key: 'province_id', 
-                label: 'Province (Filter)', 
-                type: 'select', 
-                virtual: true,
-                dynamicOptions: (f) => props.provinces.filter(p => p.country_id === f.country_id).map(p => ({value: p.id, label: p.name}))
-            },
             { 
                 key: 'city_id', 
                 label: 'City', 
                 type: 'select', 
-                dynamicOptions: (f) => props.cities.filter(p => p.province_id === f.province_id).map(p => ({value: p.id, label: p.name}))
+                options: props.cities.map(p => ({value: p.id, label: p.name + (p.province ? ' (' + p.province.name + ')' : '')}))
             },
             { key: 'name', label: 'Branch Name', type: 'text' },
             { key: 'address', label: 'Address', type: 'text', required: false },
@@ -208,7 +200,7 @@ const formFields = computed(() => {
                 key: 'branch_id', 
                 label: 'Branch', 
                 type: 'select', 
-                dynamicOptions: (f) => props.branches.filter(b => b.company_id === f.company_id).map(b => ({value: b.id, label: b.name}))
+                dynamicOptions: (f) => props.branches.filter(b => b.company_id == f.company_id).map(b => ({value: b.id, label: b.name}))
             },
             { key: 'name', label: 'Floor Name', type: 'text' },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
@@ -220,13 +212,13 @@ const formFields = computed(() => {
                 label: 'Branch (Filter)', 
                 type: 'select', 
                 virtual: true,
-                dynamicOptions: (f) => props.branches.filter(b => b.company_id === f.company_id).map(b => ({value: b.id, label: b.name}))
+                dynamicOptions: (f) => props.branches.filter(b => b.company_id == f.company_id).map(b => ({value: b.id, label: b.name}))
             },
             { 
                 key: 'floor_id', 
                 label: 'Floor', 
                 type: 'select', 
-                dynamicOptions: (f) => props.floors.filter(fl => fl.branch_id === f.branch_id).map(fl => ({value: fl.id, label: fl.name}))
+                dynamicOptions: (f) => props.floors.filter(fl => fl.branch_id == f.branch_id).map(fl => ({value: fl.id, label: fl.name}))
             },
             { key: 'name', label: 'Table Name', type: 'text' },
             { key: 'capacity', label: 'Capacity (Seats)', type: 'number' },
@@ -546,12 +538,13 @@ const submitPosSettings = () => {
 
     <!-- Modal Form (Locations) -->
     <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="dashboard-card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <div class="dashboard-card w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
             <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">
                 {{ editingItem ? 'Edit' : 'Create' }} {{ (geographicTabs.concat(restaurantTabs)).find(t => t.id === activeTab)?.label.slice(0, -1) }}
             </h2>
-            <form @submit.prevent="submitForm" class="space-y-4">
-                <div v-for="field in formFields" :key="field.key">
+            <form @submit.prevent="submitForm" class="flex flex-col">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div v-for="field in formFields" :key="field.key" :class="{'md:col-span-2': field.type === 'textarea'}">
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ field.label }}</label>
                     
                     <template v-if="field.type === 'checkbox'">
@@ -575,6 +568,7 @@ const submitPosSettings = () => {
                     </template>
 
                     <div v-if="form.errors[field.key]" class="text-red-500 text-xs mt-1">{{ form.errors[field.key] }}</div>
+                </div>
                 </div>
                 
                 <div class="flex justify-end gap-3 mt-8">

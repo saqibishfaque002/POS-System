@@ -14,7 +14,9 @@ class SaleInvoiceController extends Controller
     public function index()
     {
         $saleInvoices = SaleInvoice::with(['branch', 'items.item'])->latest()->get();
-        $branches = Branch::where('is_active', true)->get();
+        $user = auth()->user();
+        $isAdmin = in_array($user->role, ['admin', 'manager']);
+        $branches = $isAdmin ? Branch::where('is_active', true)->orderBy('name')->get() : $user->branches()->where('is_active', true)->orderBy('name')->get();
         $items = FoodItem::where('is_active', true)->get();
 
         return Inertia::render('Trade/SaleInvoices/Index', [

@@ -17,7 +17,9 @@ class PurchaseInvoiceController extends Controller
     public function index()
     {
         $purchaseInvoices = PurchaseInvoice::with(['branch', 'supplier', 'goodReceivedNote'])->latest()->get();
-        $branches = Branch::where('is_active', true)->get();
+        $user = auth()->user();
+        $isAdmin = in_array($user->role, ['admin', 'manager']);
+        $branches = $isAdmin ? Branch::where('is_active', true)->orderBy('name')->get() : $user->branches()->where('is_active', true)->orderBy('name')->get();
         $suppliers = Supplier::where('is_active', true)->get();
         
         // Fetch approved GRNs to allow creating PI from GRN

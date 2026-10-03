@@ -17,7 +17,9 @@ class PurchaseReturnController extends Controller
     public function index()
     {
         $purchaseReturns = PurchaseReturn::with(['branch', 'supplier', 'purchaseInvoice'])->latest()->get();
-        $branches = Branch::where('is_active', true)->get();
+        $user = auth()->user();
+        $isAdmin = in_array($user->role, ['admin', 'manager']);
+        $branches = $isAdmin ? Branch::where('is_active', true)->orderBy('name')->get() : $user->branches()->where('is_active', true)->orderBy('name')->get();
         $suppliers = Supplier::where('is_active', true)->get();
         
         // Fetch approved PIs to allow creating PR from PI

@@ -15,7 +15,9 @@ class SaleReturnController extends Controller
     public function index()
     {
         $saleReturns = SaleReturn::with(['branch', 'saleInvoice', 'items.item'])->latest()->get();
-        $branches = Branch::where('is_active', true)->get();
+        $user = auth()->user();
+        $isAdmin = in_array($user->role, ['admin', 'manager']);
+        $branches = $isAdmin ? Branch::where('is_active', true)->orderBy('name')->get() : $user->branches()->where('is_active', true)->orderBy('name')->get();
         $items = FoodItem::where('is_active', true)->get();
 
         // Fetch paid/completed SIs to allow creating SRTN from SI

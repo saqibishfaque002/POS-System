@@ -20,7 +20,9 @@ class ProductionController extends Controller
         $productions = Production::with(['branch', 'recipe.recipeable', 'items.ingredientItem', 'items.unit', 'creator', 'completer'])->latest()->get();
         // Load recipes that have recipeable (like Sub-Recipe or FoodItem) and ingredients
         $recipes = Recipe::with(['recipeable', 'ingredients.ingredientItem.consumptionUnit', 'ingredients.unit'])->where('status', 'active')->get();
-        $branches = Branch::where('is_active', true)->get();
+        $user = auth()->user();
+        $isAdmin = in_array($user->role, ['admin', 'manager']);
+        $branches = $isAdmin ? Branch::where('is_active', true)->orderBy('name')->get() : $user->branches()->where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('Production/Index', [
             'productions' => $productions,
