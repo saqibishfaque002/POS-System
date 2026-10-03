@@ -72,7 +72,7 @@ const markAsCompleted = (production) => {
                     {{ item.branch?.name || 'N/A' }}
                 </template>
                 <template #cell-recipe="{ item }">
-                    <span class="font-bold text-slate-700 dark:text-slate-300">{{ item.recipe?.name || 'N/A' }}</span>
+                    <span class="font-bold text-slate-700 dark:text-slate-300">{{ item.recipe?.recipeable?.name || 'N/A' }}</span>
                 </template>
                 <template #cell-actual_yield_qty="{ item }">
                     {{ item.actual_yield_qty ? item.actual_yield_qty : '-' }}

@@ -188,7 +188,7 @@ const closeModal = () => {
                             <select id="recipe_id" v-model="form.recipe_id" class="pos-input w-full mt-1" required :disabled="filteredRecipes.length === 0">
                                 <option value="" disabled>Select Recipe</option>
                                 <option v-for="recipe in filteredRecipes" :key="recipe.id" :value="recipe.id">
-                                    {{ recipe.name }} (Yield: {{ recipe.yield_quantity }})
+                                    {{ recipe.recipeable?.name || 'Unknown Recipe' }} (Yield: {{ recipe.yield_quantity }})
                                 </option>
                             </select>
                             <InputError :message="form.errors.recipe_id" class="mt-2" />
