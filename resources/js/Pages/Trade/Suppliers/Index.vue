@@ -4,11 +4,16 @@ import { useForm, router } from '@inertiajs/vue3';
 import InventoryLayout from '@/Layouts/InventoryLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     suppliers: {
         type: Array,
         required: true
+    },
+    ingredientItems: {
+        type: Array,
+        default: () => []
     }
 });
 
@@ -21,7 +26,8 @@ const form = useForm({
     phone: '',
     email: '',
     address: '',
-    is_active: true
+    is_active: true,
+    items: []
 });
 
 const openModal = (item = null) => {
@@ -33,9 +39,11 @@ const openModal = (item = null) => {
         form.email = item.email;
         form.address = item.address;
         form.is_active = !!item.is_active;
+        form.items = item.items ? item.items.map(i => i.id) : [];
     } else {
         form.reset();
         form.is_active = true;
+        form.items = [];
     }
     isModalOpen.value = true;
 };
@@ -163,6 +171,19 @@ const actions = [
                             <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Address</label>
                             <textarea v-model="form.address" class="pos-input w-full" rows="3" placeholder="Full business address..."></textarea>
                             <div v-if="form.errors.address" class="text-red-500 text-xs mt-1">{{ form.errors.address }}</div>
+                        </div>
+
+                        <!-- Items (Multi Select) -->
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Linked Ingredient Items</label>
+                            <SelectInput 
+                                v-model="form.items" 
+                                :options="ingredientItems" 
+                                :multiple="true"
+                                placeholder="Select ingredient items..." 
+                                searchPlaceholder="Search items by name or SKU..."
+                            />
+                            <div v-if="form.errors.items" class="text-red-500 text-xs mt-1">{{ form.errors.items }}</div>
                         </div>
 
                         <!-- Active Status -->

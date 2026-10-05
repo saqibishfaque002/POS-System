@@ -28,4 +28,9 @@ class IngredientItem extends Model
     {
         return $this->belongsTo(IngredientUnit::class, 'consumption_unit_id');
     }
+
+    public function suppliers()
+    {
+        return $this->belongsToMany(Supplier::class);
+    }
 }

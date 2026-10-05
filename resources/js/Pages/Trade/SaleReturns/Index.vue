@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { Head, useForm, Link, router } from '@inertiajs/vue3';
 import DataTable from '@/Components/DataTable.vue';
 import InventorySidebar from '@/Components/InventorySidebar.vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     saleReturns: Array,
@@ -396,19 +397,25 @@ const formTotal = computed(() => {
                             <!-- Branch -->
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Branch</label>
-                                <select v-model="form.branch_id" class="pos-input w-full" required>
-                                    <option value="" disabled>Select Branch</option>
-                                    <option v-for="branch in branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
-                                </select>
+                                <SelectInput 
+                                    v-model="form.branch_id" 
+                                    :options="branches" 
+                                    placeholder="Select Branch" 
+                                    searchPlaceholder="Search branch..."
+                                />
                             </div>
 
                             <!-- Link SI -->
                             <div v-if="isLinked">
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select Sale Invoice</label>
-                                <select v-model="form.reference_id" @change="onSiSelect" class="pos-input w-full" :disabled="!form.branch_id" :required="isLinked">
-                                    <option value="" disabled>Choose Invoice</option>
-                                    <option v-for="si in filteredSis" :key="si.id" :value="si.id">{{ si.document_number }} - {{ si.date }}</option>
-                                </select>
+                                <SelectInput 
+                                    v-model="form.reference_id" 
+                                    @update:modelValue="onSiSelect" 
+                                    :options="filteredSis.map(si => ({id: si.id, name: si.document_number + ' - ' + si.date}))" 
+                                    placeholder="Choose Invoice" 
+                                    searchPlaceholder="Search invoice..."
+                                    :disabled="!form.branch_id"
+                                />
                                 <p v-if="!form.branch_id" class="text-xs text-rose-500 mt-1">Select branch first</p>
                             </div>
                             
@@ -455,13 +462,20 @@ const formTotal = computed(() => {
                                 <tbody>
                                     <tr v-for="(item, index) in form.items" :key="index" class="border-b border-slate-100 dark:border-slate-800 last:border-0">
                                         <td class="py-3 pr-2">
-                                            <select v-if="isLinked" v-model="item.item_id" class="pos-input w-full !py-1.5 !px-2 text-sm disabled:opacity-50" disabled required>
-                                                <option v-for="i in items" :key="i.id" :value="i.id">{{ i.name }}</option>
-                                            </select>
-                                            <select v-else v-model="item.item_id" @change="onItemSelect(item)" class="pos-input w-full !py-1.5 !px-2 text-sm" required>
-                                                <option value="" disabled>Select Item</option>
-                                                <option v-for="i in items" :key="i.id" :value="i.id">{{ i.name }}</option>
-                                            </select>
+                                            <SelectInput 
+                                                v-if="isLinked" 
+                                                v-model="item.item_id" 
+                                                :options="items" 
+                                                placeholder="Select Item"
+                                                :disabled="true"
+                                            />
+                                            <SelectInput 
+                                                v-else 
+                                                v-model="item.item_id" 
+                                                @update:modelValue="onItemSelect(item)" 
+                                                :options="items" 
+                                                placeholder="Select Item"
+                                            />
                                         </td>
                                         <td class="py-3 pr-2">
                                             <input type="number" step="0.01" v-model="item.quantity" @input="updateItemAmounts(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>

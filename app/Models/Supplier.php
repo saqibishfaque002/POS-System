@@ -17,4 +17,9 @@ class Supplier extends Model
         'address',
         'is_active',
     ];
+
+    public function items()
+    {
+        return $this->belongsToMany(IngredientItem::class);
+    }
 }

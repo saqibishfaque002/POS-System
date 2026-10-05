@@ -20,7 +20,7 @@ class PurchaseInvoiceController extends Controller
         $user = auth()->user();
         $isAdmin = in_array($user->role, ['admin', 'manager']);
         $branches = $isAdmin ? Branch::where('is_active', true)->orderBy('name')->get() : $user->branches()->where('is_active', true)->orderBy('name')->get();
-        $suppliers = Supplier::where('is_active', true)->get();
+        $suppliers = Supplier::with('items')->where('is_active', true)->get();
         
         // Fetch approved GRNs to allow creating PI from GRN
         $approvedGrns = GoodReceivedNote::with(['items.item.purchaseUnit', 'items.unit'])
@@ -30,6 +30,7 @@ class PurchaseInvoiceController extends Controller
 
         $items = \App\Models\IngredientItem::with(['purchaseUnit', 'consumptionUnit'])->where('is_active', true)->get();
         $units = \App\Models\IngredientUnit::where('is_active', true)->get();
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
 
         return Inertia::render('Trade/PurchaseInvoices/Index', [
             'purchaseInvoices' => $purchaseInvoices,
@@ -38,6 +39,7 @@ class PurchaseInvoiceController extends Controller
             'approvedGrns' => $approvedGrns,
             'items' => $items,
             'units' => $units,
+            'settings' => $settings,
         ]);
     }
 

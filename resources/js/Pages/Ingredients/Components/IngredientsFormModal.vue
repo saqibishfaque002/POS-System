@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     isOpen: Boolean,
@@ -45,12 +46,14 @@ const activeTabLabel = computed(() => {
                         </template>
                         
                         <template v-else-if="field.type === 'select'">
-                            <select v-model="form[field.key]" class="pos-input w-full" required>
-                                <option value="" disabled>Select an option</option>
-                                <option v-for="opt in field.options" :key="opt.value" :value="opt.value">
-                                    {{ opt.label }}
-                                </option>
-                            </select>
+                            <SelectInput 
+                                v-model="form[field.key]" 
+                                :options="field.options" 
+                                valueKey="value"
+                                labelKey="label"
+                                placeholder="Select an option" 
+                                searchPlaceholder="Search option..."
+                            />
                         </template>
                         
                         <template v-else>

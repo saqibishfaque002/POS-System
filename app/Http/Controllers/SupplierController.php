@@ -10,10 +10,13 @@ class SupplierController extends Controller
 {
     public function index()
     {
-        $suppliers = Supplier::latest()->get();
+        $suppliers = Supplier::with('items')->latest()->get();
+        // Also fetch ingredient items for the UI selection
+        $ingredientItems = \App\Models\IngredientItem::where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('Trade/Suppliers/Index', [
             'suppliers' => $suppliers,
+            'ingredientItems' => $ingredientItems,
         ]);
     }
 
@@ -26,11 +29,17 @@ class SupplierController extends Controller
             'phone' => 'nullable|string|max:255',
             'address' => 'nullable|string',
             'is_active' => 'boolean',
+            'items' => 'nullable|array',
+            'items.*' => 'exists:ingredient_items,id'
         ]);
 
         if (!isset($validated['is_active'])) $validated['is_active'] = false;
 
-        Supplier::create($validated);
+        $supplier = Supplier::create(\Illuminate\Support\Arr::except($validated, ['items']));
+
+        if (isset($validated['items'])) {
+            $supplier->items()->sync($validated['items']);
+        }
 
         return back()->with('success', 'Supplier created successfully.');
     }
@@ -44,11 +53,19 @@ class SupplierController extends Controller
             'phone' => 'nullable|string|max:255',
             'address' => 'nullable|string',
             'is_active' => 'boolean',
+            'items' => 'nullable|array',
+            'items.*' => 'exists:ingredient_items,id'
         ]);
 
         if (!isset($validated['is_active'])) $validated['is_active'] = false;
 
-        $supplier->update($validated);
+        $supplier->update(\Illuminate\Support\Arr::except($validated, ['items']));
+
+        if (isset($validated['items'])) {
+            $supplier->items()->sync($validated['items']);
+        } else {
+            $supplier->items()->sync([]);
+        }
 
         return back()->with('success', 'Supplier updated successfully.');
     }

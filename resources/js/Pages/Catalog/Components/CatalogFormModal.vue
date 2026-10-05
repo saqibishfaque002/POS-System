@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     isOpen: Boolean,
@@ -45,10 +46,14 @@ const activeTabLabel = computed(() => {
                     </template>
                     
                     <template v-else-if="field.type === 'select'">
-                        <select v-model="form[field.key]" class="pos-input w-full" required>
-                            <option value="" disabled>Select an option</option>
-                            <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                        </select>
+                        <SelectInput 
+                            v-model="form[field.key]" 
+                            :options="field.options" 
+                            valueKey="value"
+                            labelKey="label"
+                            placeholder="Select an option" 
+                            searchPlaceholder="Search option..."
+                        />
                     </template>
                     
                     <template v-else-if="field.type === 'custom_variations'">
@@ -62,10 +67,12 @@ const activeTabLabel = computed(() => {
                             
                             <div v-for="(v, index) in form.variations" :key="index" class="flex gap-2 mb-2 items-start">
                                 <div class="flex-1">
-                                    <select v-model="v.variation_id" class="pos-input w-full !py-1.5 text-sm" required>
-                                        <option value="" disabled>Select Variation</option>
-                                        <option v-for="gv in globalVariations" :key="gv.id" :value="gv.id">{{ gv.name }}</option>
-                                    </select>
+                                    <SelectInput 
+                                        v-model="v.variation_id" 
+                                        :options="globalVariations" 
+                                        placeholder="Select Variation" 
+                                        searchPlaceholder="Search variation..."
+                                    />
                                 </div>
                                 <div class="w-24">
                                     <input type="number" step="0.01" v-model="v.price" placeholder="Price" class="pos-input w-full !py-1.5 text-sm" required>

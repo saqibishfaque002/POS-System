@@ -20,7 +20,7 @@ class PurchaseReturnController extends Controller
         $user = auth()->user();
         $isAdmin = in_array($user->role, ['admin', 'manager']);
         $branches = $isAdmin ? Branch::where('is_active', true)->orderBy('name')->get() : $user->branches()->where('is_active', true)->orderBy('name')->get();
-        $suppliers = Supplier::where('is_active', true)->get();
+        $suppliers = Supplier::with('items')->where('is_active', true)->get();
         
         // Fetch approved PIs to allow creating PR from PI
         $approvedPis = PurchaseInvoice::with(['items.item.purchaseUnit', 'items.unit'])
@@ -30,6 +30,7 @@ class PurchaseReturnController extends Controller
 
         $items = \App\Models\IngredientItem::with(['purchaseUnit', 'consumptionUnit'])->where('is_active', true)->get();
         $units = \App\Models\IngredientUnit::where('is_active', true)->get();
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
 
         return Inertia::render('Trade/PurchaseReturns/Index', [
             'purchaseReturns' => $purchaseReturns,
@@ -38,6 +39,7 @@ class PurchaseReturnController extends Controller
             'approvedPis' => $approvedPis,
             'items' => $items,
             'units' => $units,
+            'settings' => $settings,
         ]);
     }
 

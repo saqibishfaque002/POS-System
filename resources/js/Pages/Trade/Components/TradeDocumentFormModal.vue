@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     isOpen: Boolean,
@@ -10,6 +11,10 @@ const props = defineProps({
     suppliers: Array,
     items: Array,
     units: Array,
+    settings: {
+        type: Object,
+        default: () => ({})
+    },
     
     // Config options
     hasSupplier: { type: Boolean, default: true },
@@ -106,6 +111,32 @@ const updateGlobalAmounts = () => {
 
 watch(itemSubtotal, () => {
     updateGlobalAmounts();
+});
+
+watch(() => props.form.supplier_id, (newVal) => {
+    // If auto_fetch_supplier_items is enabled, supplier is selected, we are NOT editing, NOT linked to reference
+    if (newVal && props.settings.auto_fetch_supplier_items === 'true' && !props.isEditing && !props.isReferenceLinked) {
+        // Find supplier and their items
+        const supplier = props.suppliers.find(s => s.id === newVal);
+        if (supplier && supplier.items && supplier.items.length > 0) {
+            // Only auto-populate if the items list is currently empty to prevent accidental data loss
+            const hasEmptyList = props.form.items.length === 0 || (props.form.items.length === 1 && !props.form.items[0].item_id);
+            
+            if (hasEmptyList) {
+                props.form.items = supplier.items.map(ingredient => ({
+                    item_id: ingredient.id,
+                    ref_qty: 0,
+                    quantity: 1,
+                    unit_id: ingredient.purchase_unit_id,
+                    unit_price: props.hasItemUnitPrice ? (parseFloat(ingredient.base_price) || 0) : 0,
+                    discount_amount: 0,
+                    discount_percent: 0,
+                    tax_amount: 0,
+                    tax_percent: 0
+                }));
+            }
+        }
+    }
 });
 
 watch(() => props.isOpen, (isOpen) => {
@@ -209,18 +240,24 @@ const getConversionText = (item) => {
                     <!-- Branch -->
                     <div>
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Branch</label>
-                        <select v-model="form.branch_id" class="pos-input w-full" required>
-                            <option value="" disabled>Select Branch</option>
-                            <option v-for="branch in branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
-                        </select>
+                        <SelectInput 
+                            v-model="form.branch_id" 
+                            :options="branches" 
+                            placeholder="Select Branch" 
+                            searchPlaceholder="Search branch..."
+                        />
                     </div>
                     
                     <div v-if="hasReference && isReferenceLinked">
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select {{ referenceLabel }}</label>
-                        <select v-model="form.reference_id" @change="emit('reference-select')" class="pos-input w-full" :disabled="!form.branch_id" required>
-                            <option value="">-- Select {{ referenceLabel }} --</option>
-                            <option v-for="opt in referenceOptions" :key="opt.id" :value="opt.id">{{ opt.document_number }} - {{ opt.date }}</option>
-                        </select>
+                        <SelectInput 
+                            v-model="form.reference_id" 
+                            @update:modelValue="emit('reference-select')" 
+                            :options="referenceOptions.map(o => ({id: o.id, name: o.document_number + ' - ' + o.date}))" 
+                            :placeholder="'-- Select ' + referenceLabel + ' --'"
+                            searchPlaceholder="Search reference..."
+                            :disabled="!form.branch_id"
+                        />
                         <p v-if="!form.branch_id" class="text-xs text-orange-500 mt-1">Select branch first</p>
                     </div>
                     
@@ -253,10 +290,12 @@ const getConversionText = (item) => {
                     <!-- Supplier -->
                     <div v-if="hasSupplier">
                         <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Supplier</label>
-                        <select v-model="form.supplier_id" class="pos-input w-full" required>
-                            <option value="" disabled>Select Supplier</option>
-                            <option v-for="sup in suppliers" :key="sup.id" :value="sup.id">{{ sup.name }}</option>
-                        </select>
+                        <SelectInput 
+                            v-model="form.supplier_id" 
+                            :options="suppliers" 
+                            placeholder="Select Supplier" 
+                            searchPlaceholder="Search supplier..."
+                        />
                     </div>
                 </div>
 
@@ -292,13 +331,20 @@ const getConversionText = (item) => {
                                 </tr>
                                 <tr v-for="(item, index) in form.items" :key="index" class="border-b border-slate-100 dark:border-slate-800 last:border-0">
                                     <td class="py-3 pr-2">
-                                        <select v-if="isReferenceLinked" v-model="item.item_id" class="pos-input w-full !py-1.5 !px-2 text-sm disabled:opacity-50" disabled required>
-                                            <option v-for="i in items" :key="i.id" :value="i.id">{{ i.name }}</option>
-                                        </select>
-                                        <select v-else v-model="item.item_id" @change="handleItemSelect(item)" class="pos-input w-full !py-1.5 !px-2 text-sm" required>
-                                            <option value="" disabled>Select Item</option>
-                                            <option v-for="i in items" :key="i.id" :value="i.id">{{ i.name }}</option>
-                                        </select>
+                                        <SelectInput 
+                                            v-if="isReferenceLinked" 
+                                            v-model="item.item_id" 
+                                            :options="items" 
+                                            placeholder="Select Item"
+                                            :disabled="true"
+                                        />
+                                        <SelectInput 
+                                            v-else 
+                                            v-model="item.item_id" 
+                                            @update:modelValue="handleItemSelect(item)" 
+                                            :options="items" 
+                                            placeholder="Select Item"
+                                        />
                                     </td>
                                     <td v-if="hasReferenceQty && isReferenceLinked" class="py-3 pr-2 text-center text-sm font-bold text-slate-500">
                                         {{ item.ref_qty }}
@@ -307,10 +353,12 @@ const getConversionText = (item) => {
                                         <input type="number" step="0.01" v-model="item.quantity" @input="updateItemAmounts(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>
                                     </td>
                                     <td class="py-3 pr-2">
-                                        <select v-model="item.unit_id" class="pos-input w-full !py-1.5 !px-2 text-sm" :disabled="isReferenceLinked" required>
-                                            <option value="" disabled>Unit</option>
-                                            <option v-for="u in getValidUnits(item.item_id)" :key="u.id" :value="u.id">{{ u.name }}</option>
-                                        </select>
+                                        <SelectInput 
+                                            v-model="item.unit_id" 
+                                            :options="getValidUnits(item.item_id)" 
+                                            placeholder="Unit"
+                                            :disabled="isReferenceLinked"
+                                        />
                                     </td>
                                     <td v-if="hasItemUnitPrice" class="py-3 pr-2">
                                         <input type="number" step="0.01" v-model="item.unit_price" @input="updateItemAmounts(item)" class="pos-input w-full !py-1.5 !px-2 text-right text-sm" required>

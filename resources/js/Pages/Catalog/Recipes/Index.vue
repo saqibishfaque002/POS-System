@@ -6,6 +6,7 @@ import DataTable from '@/Components/DataTable.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     recipes: Array,
@@ -276,33 +277,37 @@ const deleteRecipe = (recipe) => {
                                 
                                 <div v-if="activeTab === 'standard'">
                                     <InputLabel for="selected_base_item_id" value="Select Food Item" />
-                                    <select id="selected_base_item_id" v-model="form.selected_base_item_id" class="pos-input mt-1 block w-full" :disabled="editingRecipe" required>
-                                        <option value="">Select an Item...</option>
-                                        <option v-for="item in foodItems" :key="item.id" :value="item.id">{{ item.name }}</option>
-                                    </select>
+                                    <SelectInput 
+                                        v-model="form.selected_base_item_id" 
+                                        :options="foodItems" 
+                                        placeholder="Select an Item..." 
+                                        searchPlaceholder="Search food item..."
+                                        :disabled="editingRecipe"
+                                    />
                                     <InputError :message="form.errors.recipeable_id" class="mt-2" />
                                 </div>
                                 
                                 <div v-if="activeTab === 'standard' && selectedFoodItem && selectedFoodItem.variations && selectedFoodItem.variations.length > 0">
                                     <InputLabel for="variation_id" value="Select Variation" class="mt-4" />
-                                    <select id="variation_id" v-model="form.recipeable_id" class="pos-input mt-1 block w-full" :disabled="editingRecipe" required>
-                                        <option value="">Select Variation...</option>
-                                        <option v-for="v in selectedFoodItem.variations" :key="v.id" :value="v.id">{{ v.variation?.name || 'Variation' }}</option>
-                                    </select>
+                                    <SelectInput 
+                                        v-model="form.recipeable_id" 
+                                        :options="selectedFoodItem.variations.map(v => ({id: v.id, name: v.variation?.name || 'Variation'}))" 
+                                        placeholder="Select Variation..." 
+                                        searchPlaceholder="Search variation..."
+                                        :disabled="editingRecipe"
+                                    />
                                     <InputError :message="form.errors.recipeable_id" class="mt-2" />
                                 </div>
 
                                 <div v-if="activeTab !== 'standard'">
                                     <InputLabel for="recipeable_id" :value="activeTab === 'property' ? 'Select Property Item' : 'Select Ingredient (Sub-Recipe)'" />
-                                    <select id="recipeable_id" v-model="form.recipeable_id" class="pos-input mt-1 block w-full" :disabled="editingRecipe" required>
-                                        <option value="">Select an Item...</option>
-                                        <template v-if="activeTab === 'property'">
-                                            <option v-for="item in propertyItems" :key="item.id" :value="item.id">{{ item.name }}</option>
-                                        </template>
-                                        <template v-else>
-                                            <option v-for="item in ingredientItems" :key="item.id" :value="item.id">{{ item.name }}</option>
-                                        </template>
-                                    </select>
+                                    <SelectInput 
+                                        v-model="form.recipeable_id" 
+                                        :options="activeTab === 'property' ? propertyItems : ingredientItems" 
+                                        placeholder="Select an Item..." 
+                                        searchPlaceholder="Search item..."
+                                        :disabled="editingRecipe"
+                                    />
                                     <InputError :message="form.errors.recipeable_id" class="mt-2" />
                                 </div>
 
@@ -314,10 +319,11 @@ const deleteRecipe = (recipe) => {
 
                                 <div>
                                     <InputLabel for="status" value="Status" />
-                                    <select id="status" v-model="form.status" class="pos-input mt-1 block w-full">
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
+                                    <SelectInput 
+                                        v-model="form.status" 
+                                        :options="[{id: 'active', name: 'Active'}, {id: 'inactive', name: 'Inactive'}]" 
+                                        placeholder="Select Status"
+                                    />
                                     <InputError :message="form.errors.status" class="mt-2" />
                                 </div>
                                 
@@ -352,12 +358,13 @@ const deleteRecipe = (recipe) => {
                                         <div class="flex gap-3 items-start">
                                             <div class="flex-1">
                                                 <InputLabel :value="'Ingredient ' + (index + 1)" class="sr-only" />
-                                                <select v-model="item.ingredient_item_id" @change="onIngredientChange(index)" class="pos-input w-full text-sm py-1.5" required>
-                                                    <option value="">Select Ingredient...</option>
-                                                    <option v-for="ing in ingredientItems" :key="ing.id" :value="ing.id">
-                                                        {{ ing.name }}
-                                                    </option>
-                                                </select>
+                                                <SelectInput 
+                                                    v-model="item.ingredient_item_id" 
+                                                    @update:modelValue="onIngredientChange(index)" 
+                                                    :options="ingredientItems" 
+                                                    placeholder="Select Ingredient..." 
+                                                    searchPlaceholder="Search ingredient..."
+                                                />
                                             </div>
                                             
                                             <div class="w-24">
@@ -367,10 +374,12 @@ const deleteRecipe = (recipe) => {
                                             
                                             <div class="w-32">
                                                 <InputLabel value="Unit" class="sr-only" />
-                                                <select v-model="item.unit_id" class="pos-input w-full text-sm py-1.5" required>
-                                                    <option value="">Unit...</option>
-                                                    <option v-for="u in units" :key="u.id" :value="u.id">{{ u.short_code }}</option>
-                                                </select>
+                                                <SelectInput 
+                                                    v-model="item.unit_id" 
+                                                    :options="units" 
+                                                    labelKey="short_code"
+                                                    placeholder="Unit..." 
+                                                />
                                             </div>
 
                                             <div class="w-24 flex items-center justify-end px-2">

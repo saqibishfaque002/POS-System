@@ -25,9 +25,10 @@ class PurchaseOrderController extends Controller
         $user = auth()->user();
         $isAdmin = in_array($user->role, ['admin', 'manager']);
         $branches = $isAdmin ? Branch::where('is_active', true)->orderBy('name')->get() : $user->branches()->where('is_active', true)->orderBy('name')->get();
-        $suppliers = Supplier::where('is_active', true)->get();
+        $suppliers = Supplier::with('items')->where('is_active', true)->get();
         $items = IngredientItem::with(['purchaseUnit', 'consumptionUnit'])->where('is_active', true)->get();
         $units = IngredientUnit::where('is_active', true)->get();
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
         
         // Fetch approved PRs to allow creating PO from PR
         $approvedPrs = PurchaseRequest::with('items')->where('status', 'approved')->get();
@@ -38,7 +39,8 @@ class PurchaseOrderController extends Controller
             'suppliers' => $suppliers,
             'items' => $items,
             'units' => $units,
-            'approvedPrs' => $approvedPrs
+            'approvedPrs' => $approvedPrs,
+            'settings' => $settings
         ]);
     }
 

@@ -25,9 +25,10 @@ class GoodReceivedNoteController extends Controller
         $user = auth()->user();
         $isAdmin = in_array($user->role, ['admin', 'manager']);
         $branches = $isAdmin ? Branch::where('is_active', true)->orderBy('name')->get() : $user->branches()->where('is_active', true)->orderBy('name')->get();
-        $suppliers = Supplier::where('is_active', true)->get();
+        $suppliers = Supplier::with('items')->where('is_active', true)->get();
         $items = IngredientItem::with(['purchaseUnit', 'consumptionUnit'])->where('is_active', true)->get();
         $units = IngredientUnit::where('is_active', true)->get();
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
         
         // Fetch approved PO to allow creating PO from PR
         $approvedPos = PurchaseOrder::with('items')->where('status', 'completed')->get();
@@ -38,7 +39,8 @@ class GoodReceivedNoteController extends Controller
             'suppliers' => $suppliers,
             'items' => $items,
             'units' => $units,
-            'approvedPos' => $approvedPos
+            'approvedPos' => $approvedPos,
+            'settings' => $settings
         ]);
     }
 

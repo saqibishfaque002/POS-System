@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import DataTable from '@/Components/DataTable.vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     countries: Array,
@@ -315,6 +316,7 @@ const generalForm = useForm({
 const posForm = useForm({
     tax_rate: props.settings.tax_rate || 0,
     print_mode: props.settings.print_mode || 'browser',
+    auto_fetch_supplier_items: props.settings.auto_fetch_supplier_items == '1' || props.settings.auto_fetch_supplier_items == 'true' || false,
 });
 
 const submitGeneralSettings = () => {
@@ -484,11 +486,23 @@ const submitPosSettings = () => {
                             
                             <div>
                                 <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Print Mode</label>
-                                <select v-model="posForm.print_mode" class="pos-input w-full md:w-1/2">
-                                    <option value="browser">Browser Print (Opens Print Dialog)</option>
-                                    <option value="pdf">PDF Download (Saves as PDF)</option>
-                                </select>
+                                <div class="w-full md:w-1/2">
+                                    <SelectInput 
+                                        v-model="posForm.print_mode" 
+                                        :options="[{id: 'browser', name: 'Browser Print (Opens Print Dialog)'}, {id: 'pdf', name: 'PDF Download (Saves as PDF)'}]" 
+                                        placeholder="Select Print Mode" 
+                                    />
+                                </div>
                                 <p class="text-xs text-slate-500 mt-2">Choose how documents (like PR, PO) are printed across the system.</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Auto-Fetch Supplier Items</label>
+                                <label class="relative inline-flex items-center cursor-pointer mt-1">
+                                    <input type="checkbox" v-model="posForm.auto_fetch_supplier_items" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-500 dark:peer-checked:bg-[#06b6d4]"></div>
+                                </label>
+                                <p class="text-xs text-slate-500 mt-2">When enabled, selecting a supplier in trade documents will automatically load their linked ingredient items.</p>
                             </div>
                             
                             <div class="pt-4 flex justify-end border-t border-slate-100 dark:border-slate-700/50">
@@ -555,12 +569,15 @@ const submitPosSettings = () => {
                     </template>
                     
                     <template v-else-if="field.type === 'select'">
-                        <select v-model="form[field.key]" class="pos-input w-full" :required="!field.virtual">
-                            <option value="" disabled>Select an option</option>
-                            <option v-for="opt in (field.dynamicOptions ? field.dynamicOptions(form) : field.options)" :key="opt.value" :value="opt.value">
-                                {{ opt.label }}
-                            </option>
-                        </select>
+                        <SelectInput 
+                            v-model="form[field.key]" 
+                            :options="field.dynamicOptions ? field.dynamicOptions(form) : field.options" 
+                            valueKey="value"
+                            labelKey="label"
+                            placeholder="Select an option" 
+                            searchPlaceholder="Search option..."
+                            :disabled="!field.virtual && (field.dynamicOptions ? field.dynamicOptions(form).length === 0 : field.options.length === 0)"
+                        />
                     </template>
                     
                     <template v-else>

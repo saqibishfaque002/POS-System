@@ -4,6 +4,7 @@ import { useForm } from '@inertiajs/vue3';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     isOpen: Boolean,
@@ -176,21 +177,24 @@ const closeModal = () => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <div>
                             <InputLabel for="branch_id" value="Branch" />
-                            <select id="branch_id" v-model="form.branch_id" class="pos-input w-full mt-1" required>
-                                <option value="" disabled>Select Branch</option>
-                                <option v-for="branch in branches" :key="branch.id" :value="branch.id">{{ branch.name }}</option>
-                            </select>
+                            <SelectInput 
+                                v-model="form.branch_id" 
+                                :options="branches" 
+                                placeholder="Select Branch" 
+                                searchPlaceholder="Search branch..."
+                            />
                             <InputError :message="form.errors.branch_id" class="mt-2" />
                         </div>
                         
                         <div>
                             <InputLabel for="recipe_id" value="Recipe / Product to Prepare" />
-                            <select id="recipe_id" v-model="form.recipe_id" class="pos-input w-full mt-1" required :disabled="filteredRecipes.length === 0">
-                                <option value="" disabled>Select Recipe</option>
-                                <option v-for="recipe in filteredRecipes" :key="recipe.id" :value="recipe.id">
-                                    {{ recipe.recipeable?.name || 'Unknown Recipe' }} (Yield: {{ recipe.yield_quantity }})
-                                </option>
-                            </select>
+                            <SelectInput 
+                                v-model="form.recipe_id" 
+                                :options="filteredRecipes.map(recipe => ({id: recipe.id, name: (recipe.recipeable?.name || 'Unknown Recipe') + ' (Yield: ' + recipe.yield_quantity + ')' }))" 
+                                placeholder="Select Recipe" 
+                                searchPlaceholder="Search recipe..."
+                                :disabled="filteredRecipes.length === 0"
+                            />
                             <InputError :message="form.errors.recipe_id" class="mt-2" />
                             <p v-if="filteredRecipes.length === 0" class="text-rose-500 text-xs mt-1 font-medium">
                                 No recipes found for the selected type. Please add a recipe first.

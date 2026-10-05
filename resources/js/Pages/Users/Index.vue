@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 import DataTable from '@/Components/DataTable.vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     users: Array,
@@ -244,40 +245,27 @@ const deleteItem = (item) => {
                         </template>
 
                         <template v-else-if="field.type === 'select'">
-                            <select v-model="form[field.key]" class="pos-input w-full" :required="field.required !== false">
-                                <option value="">Select {{ field.label }}</option>
-                                <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                            </select>
+                            <SelectInput 
+                                v-model="form[field.key]" 
+                                :options="field.options" 
+                                valueKey="value"
+                                labelKey="label"
+                                :placeholder="'Select ' + field.label" 
+                                :searchPlaceholder="'Search ' + field.label.toLowerCase() + '...'"
+                            />
                         </template>
 
                         <template v-else-if="field.type === 'multiselect'">
-                            <div class="relative">
-                                <button type="button" @click="branchDropdownOpen = !branchDropdownOpen" class="pos-input w-full flex justify-between items-center text-left bg-white dark:bg-slate-900">
-                                    <span class="truncate text-slate-600 dark:text-slate-300">
-                                        {{ form[field.key].length ? form[field.key].length + ' Branches Selected' : 'Select Branches' }}
-                                    </span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-                                
-                                <div v-show="branchDropdownOpen" class="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                    <div class="p-2 flex flex-col gap-1">
-                                        <label v-for="opt in field.options" :key="opt.value" class="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer group">
-                                            <div class="relative flex items-center">
-                                                <input type="checkbox" :value="opt.value" v-model="form[field.key]" class="peer sr-only" />
-                                                <div class="w-5 h-5 rounded border border-slate-300 dark:border-slate-600 peer-checked:bg-indigo-500 dark:peer-checked:bg-[#06b6d4] peer-checked:border-transparent flex items-center justify-center transition-colors">
-                                                    <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <span class="text-sm text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-white transition-colors">{{ opt.label }}</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <!-- Overlay to close dropdown when clicking outside -->
-                                <div v-if="branchDropdownOpen" @click="branchDropdownOpen = false" class="fixed inset-0 z-0"></div>
+                            <div class="relative z-50">
+                                <SelectInput 
+                                    v-model="form[field.key]" 
+                                    :options="field.options" 
+                                    valueKey="value"
+                                    labelKey="label"
+                                    :multiple="true"
+                                    :placeholder="'Select ' + field.label" 
+                                    :searchPlaceholder="'Search ' + field.label.toLowerCase() + '...'"
+                                />
                             </div>
                         </template>
                         
