@@ -19,8 +19,13 @@ use Inertia\Inertia;
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/pos', [\App\Http\Controllers\POS\TerminalController::class, 'index'])->name('pos.index');
-    Route::post('/pos/orders', [\App\Http\Controllers\POS\TerminalController::class, 'store'])->name('pos.orders.store');
+    Route::get('/pos', function () {
+        return Inertia::render('Pos/Index', [
+            'products' => Product::all()
+        ]);
+    })->name('pos.index');
+
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
 
     Route::get('/inventory', function () {
         return Inertia::render('Dashboard'); // Placeholder for inventory
