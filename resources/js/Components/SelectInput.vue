@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
-
 const props = defineProps({
     modelValue: {
         type: [Array, String, Number, Boolean],
@@ -42,8 +41,37 @@ const isOpen = ref(false);
 const searchQuery = ref('');
 const dropdownRef = ref(null);
 const searchInputRef = ref(null);
+const dropdownStyle = ref({});
 
-// For multiple selection, modelValue must be an array. For single, it's a primitive.
+const updatePosition = () => {
+    if (!dropdownRef.value || !isOpen.value) return;
+    const rect = dropdownRef.value.getBoundingClientRect();
+    
+    // Check if there is enough space below, otherwise show above
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 256; // max-h-64 is 256px
+    
+    if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+        // Show above
+        dropdownStyle.value = {
+            position: 'fixed',
+            bottom: `${window.innerHeight - rect.top + 4}px`,
+            left: `${rect.left}px`,
+            width: `${rect.width}px`,
+            zIndex: 999999,
+        };
+    } else {
+        // Show below
+        dropdownStyle.value = {
+            position: 'fixed',
+            top: `${rect.bottom + 4}px`,
+            left: `${rect.left}px`,
+            width: `${rect.width}px`,
+            zIndex: 999999,
+        };
+    }
+};
+
 const isSelected = (val) => {
     if (props.multiple) {
         return Array.isArray(props.modelValue) && props.modelValue.includes(val);
@@ -65,7 +93,6 @@ const filteredOptions = computed(() => {
     const query = searchQuery.value.toLowerCase();
     return props.options.filter(opt => {
         const label = String(opt[props.labelKey]).toLowerCase();
-        // Also allow searching by sku if available
         const sku = opt.sku ? String(opt.sku).toLowerCase() : '';
         return label.includes(query) || sku.includes(query);
     });
@@ -77,16 +104,35 @@ const toggleDropdown = async () => {
     isOpen.value = !isOpen.value;
     if (isOpen.value) {
         searchQuery.value = '';
+        updatePosition();
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+        
         await nextTick();
         if (searchInputRef.value) {
             searchInputRef.value.focus();
         }
+    } else {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
     }
 };
 
 const closeDropdown = (e) => {
-    if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
-        isOpen.value = false;
+    if (isOpen.value) {
+        // Find if the click is inside the teleported dropdown or the trigger
+        const isClickInsideTrigger = dropdownRef.value && dropdownRef.value.contains(e.target);
+        
+        // Let's rely on event bubbling inside the teleported component to avoid closing it
+        // Or we can check if it has a specific class or id, but standard is:
+        const dropdownElement = document.getElementById('select-dropdown-container');
+        const isClickInsideDropdown = dropdownElement && dropdownElement.contains(e.target);
+        
+        if (!isClickInsideTrigger && !isClickInsideDropdown) {
+            isOpen.value = false;
+            window.removeEventListener('scroll', updatePosition, true);
+            window.removeEventListener('resize', updatePosition);
+        }
     }
 };
 
@@ -96,6 +142,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     document.removeEventListener('click', closeDropdown);
+    window.removeEventListener('scroll', updatePosition, true);
+    window.removeEventListener('resize', updatePosition);
 });
 
 const selectOption = (opt) => {
@@ -109,9 +157,12 @@ const selectOption = (opt) => {
             newValues.push(val);
         }
         emit('update:modelValue', newValues);
+        // Don't close for multiple
     } else {
         emit('update:modelValue', val);
         isOpen.value = false;
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
     }
 };
 
@@ -179,17 +230,18 @@ const removeOption = (val) => {
         </div>
 
         <!-- Dropdown Menu -->
-        <transition 
-            enter-active-class="transition ease-out duration-100" 
-            enter-from-class="transform opacity-0 scale-95" 
-            enter-to-class="transform opacity-100 scale-100" 
-            leave-active-class="transition ease-in duration-75" 
-            leave-from-class="transform opacity-100 scale-100" 
-            leave-to-class="transform opacity-0 scale-95"
-        >
-            <div v-show="isOpen" class="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-64">
-                
-                <!-- Search Input -->
+        <Teleport to="body">
+            <transition 
+                enter-active-class="transition ease-out duration-100" 
+                enter-from-class="transform opacity-0 scale-95" 
+                enter-to-class="transform opacity-100 scale-100" 
+                leave-active-class="transition ease-in duration-75" 
+                leave-from-class="transform opacity-100 scale-100" 
+                leave-to-class="transform opacity-0 scale-95"
+            >
+                <div v-show="isOpen" id="select-dropdown-container" :style="dropdownStyle" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-64">
+                    
+                    <!-- Search Input -->
                 <div class="p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 sticky top-0 z-10">
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
@@ -238,7 +290,8 @@ const removeOption = (val) => {
                         <span class="truncate">{{ opt[labelKey] }} <span v-if="opt.sku" class="text-xs text-slate-400 dark:text-slate-500 font-normal ml-1">({{ opt.sku }})</span></span>
                     </div>
                 </div>
-            </div>
-        </transition>
+                </div>
+            </transition>
+        </Teleport>
     </div>
 </template>
