@@ -39,6 +39,7 @@ class SettingController extends Controller
                     $q->whereIn('branch_id', $branchIds);
                 })->orderBy('name')->get(),
             'settings' => Setting::pluck('value', 'key')->toArray(),
+            'paymentTypes' => \App\Models\PaymentType::orderBy('name')->get(),
         ]);
     }
 

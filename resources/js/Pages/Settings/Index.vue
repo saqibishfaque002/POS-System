@@ -13,6 +13,7 @@ const props = defineProps({
     floors: Array,
     tables: Array,
     settings: Object,
+    paymentTypes: Array,
 });
 
 // Theme logic
@@ -58,10 +59,15 @@ const settingTabs = [
     { id: 'posSettings', label: 'POS Settings' },
 ];
 
+const financialTabs = [
+    { id: 'paymentTypes', label: 'Payment Types' },
+];
+
 const expandedCategories = ref({
     general: false,
     geographic: false,
     restaurant: false,
+    financial: false,
 });
 
 watch(activeTab, (newTab) => {
@@ -69,14 +75,23 @@ watch(activeTab, (newTab) => {
         expandedCategories.value.general = true;
         expandedCategories.value.geographic = false;
         expandedCategories.value.restaurant = false;
+        expandedCategories.value.financial = false;
     }
     if (geographicTabs.some(t => t.id === newTab)) {
         expandedCategories.value.geographic = true;
         expandedCategories.value.general = false;
         expandedCategories.value.restaurant = false;
+        expandedCategories.value.financial = false;
     }
     if (restaurantTabs.some(t => t.id === newTab)) {
         expandedCategories.value.restaurant = true;
+        expandedCategories.value.general = false;
+        expandedCategories.value.geographic = false;
+        expandedCategories.value.financial = false;
+    }
+    if (financialTabs.some(t => t.id === newTab)) {
+        expandedCategories.value.financial = true;
+        expandedCategories.value.restaurant = false;
         expandedCategories.value.general = false;
         expandedCategories.value.geographic = false;
     }
@@ -99,6 +114,7 @@ const tabData = computed(() => {
         case 'branches': return props.branches;
         case 'floors': return props.floors;
         case 'tables': return props.tables;
+        case 'paymentTypes': return props.paymentTypes;
         default: return [];
     }
 });
@@ -145,6 +161,11 @@ const columns = computed(() => {
             { key: 'floor_id', label: 'Floor' },
             { key: 'name', label: 'Name' },
             { key: 'capacity', label: 'Capacity' },
+            { key: 'is_active', label: 'Active' },
+        ];
+        case 'paymentTypes': return [
+            { key: 'id', label: 'ID' },
+            { key: 'name', label: 'Name' },
             { key: 'is_active', label: 'Active' },
         ];
         default: return [];
@@ -225,6 +246,10 @@ const formFields = computed(() => {
             { key: 'capacity', label: 'Capacity (Seats)', type: 'number' },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
         ];
+        case 'paymentTypes': return [
+            { key: 'name', label: 'Payment Method Name', type: 'text' },
+            { key: 'is_active', label: 'Active', type: 'checkbox' },
+        ];
         default: return [];
     }
 });
@@ -282,6 +307,7 @@ const getRouteGroupAndPrefix = () => {
         case 'branches': return { group: 'restaurant', prefix: 'branches' };
         case 'floors': return { group: 'restaurant', prefix: 'floors' };
         case 'tables': return { group: 'restaurant', prefix: 'tables' };
+        case 'paymentTypes': return { group: 'restaurant', prefix: 'payment-types' };
     }
 };
 
@@ -422,6 +448,24 @@ const submitPosSettings = () => {
                             </div>
                         </div>
 
+                        <div>
+                            <button @click="toggleCategory('financial')" type="button" class="w-full flex justify-between items-center text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2 px-2 focus:outline-none">
+                                <span>Financial Settings</span>
+                                <svg :class="{'rotate-180': expandedCategories.financial}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <div v-show="expandedCategories.financial" class="space-y-1">
+                                <button v-for="tab in financialTabs" :key="tab.id" @click="activeTab = tab.id" 
+                                    :class="[
+                                        'w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
+                                        activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    ]">
+                                    {{ tab.label }}
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
                 </aside>
 
@@ -514,7 +558,7 @@ const submitPosSettings = () => {
                     </div>
 
                     <!-- Location & Restaurant DataTables -->
-                    <DataTable v-else :title="(geographicTabs.concat(restaurantTabs)).find(t => t.id === activeTab)?.label" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
+                    <DataTable v-else :title="(geographicTabs.concat(restaurantTabs).concat(financialTabs)).find(t => t.id === activeTab)?.label" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
                         <template #actions>
                             <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
                                 + Add New
@@ -554,7 +598,7 @@ const submitPosSettings = () => {
     <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
         <div class="dashboard-card w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
             <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">
-                {{ editingItem ? 'Edit' : 'Create' }} {{ (geographicTabs.concat(restaurantTabs)).find(t => t.id === activeTab)?.label.slice(0, -1) }}
+                {{ editingItem ? 'Edit' : 'Create' }} {{ (geographicTabs.concat(restaurantTabs).concat(financialTabs)).find(t => t.id === activeTab)?.label.slice(0, -1) }}
             </h2>
             <form @submit.prevent="submitForm" class="flex flex-col">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

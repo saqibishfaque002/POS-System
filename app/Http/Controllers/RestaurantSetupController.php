@@ -113,4 +113,28 @@ class RestaurantSetupController extends Controller
         $table->delete();
         return back();
     }
+
+    // Payment Type
+    public function storePaymentType(Request $request) {
+        $validated = $request->validate([
+            'name' => 'required|string|unique:payment_types,name',
+            'is_active' => 'boolean'
+        ]);
+        if (!isset($validated['is_active'])) $validated['is_active'] = false;
+        \App\Models\PaymentType::create($validated);
+        return back();
+    }
+    public function updatePaymentType(Request $request, \App\Models\PaymentType $paymentType) {
+        $validated = $request->validate([
+            'name' => 'required|string|unique:payment_types,name,' . $paymentType->id,
+            'is_active' => 'boolean'
+        ]);
+        if (!isset($validated['is_active'])) $validated['is_active'] = false;
+        $paymentType->update($validated);
+        return back();
+    }
+    public function destroyPaymentType(\App\Models\PaymentType $paymentType) {
+        $paymentType->delete();
+        return back();
+    }
 }

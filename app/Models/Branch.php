@@ -23,4 +23,16 @@ class Branch extends Model
     {
         return $this->belongsToMany(User::class);
     }
+
+    public function menus()
+    {
+        return $this->belongsToMany(Menu::class, 'branch_menu')->withTimestamps();
+    }
+
+    public function foodItems()
+    {
+        return $this->belongsToMany(FoodItem::class, 'branch_food_item')
+            ->withPivot(['custom_price', 'is_active'])
+            ->withTimestamps();
+    }
 }

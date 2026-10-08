@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pos_orders', function (Blueprint $table) {
+        Schema::create('branch_menu_and_item_pivot_tables', function (Blueprint $table) {
             $table->id();
             $table->timestamps();
         });
@@ -22,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pos_orders');
+        Schema::dropIfExists('branch_menu_and_item_pivot_tables');
     }
 };

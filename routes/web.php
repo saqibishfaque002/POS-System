@@ -58,6 +58,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/variations', [\App\Http\Controllers\CatalogController::class, 'storeVariation'])->name('variations.store');
         Route::put('/variations/{variation}', [\App\Http\Controllers\CatalogController::class, 'updateVariation'])->name('variations.update');
         Route::delete('/variations/{variation}', [\App\Http\Controllers\CatalogController::class, 'destroyVariation'])->name('variations.destroy');
+
+        // Menus
+        Route::get('/menus', [\App\Http\Controllers\MenuController::class, 'index'])->name('menus.index');
+        Route::post('/menus', [\App\Http\Controllers\MenuController::class, 'store'])->name('menus.store');
+        Route::put('/menus/{menu}', [\App\Http\Controllers\MenuController::class, 'update'])->name('menus.update');
+        Route::delete('/menus/{menu}', [\App\Http\Controllers\MenuController::class, 'destroy'])->name('menus.destroy');
     });
 
     // Ingredients Management
@@ -131,6 +137,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/tables', [\App\Http\Controllers\RestaurantSetupController::class, 'storeTable'])->name('tables.store');
             Route::put('/tables/{table}', [\App\Http\Controllers\RestaurantSetupController::class, 'updateTable'])->name('tables.update');
             Route::delete('/tables/{table}', [\App\Http\Controllers\RestaurantSetupController::class, 'destroyTable'])->name('tables.destroy');
+
+            Route::post('/payment-types', [\App\Http\Controllers\RestaurantSetupController::class, 'storePaymentType'])->name('payment-types.store');
+            Route::put('/payment-types/{paymentType}', [\App\Http\Controllers\RestaurantSetupController::class, 'updatePaymentType'])->name('payment-types.update');
+            Route::delete('/payment-types/{paymentType}', [\App\Http\Controllers\RestaurantSetupController::class, 'destroyPaymentType'])->name('payment-types.destroy');
         });
     });
 

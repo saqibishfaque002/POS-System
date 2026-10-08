@@ -93,6 +93,13 @@ const ingredientTabs = [
                             {{ tab.label }}
                         </Link>
                     </template>
+                    <Link :href="route('catalog.menus.index')"
+                        :class="[
+                            'block w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold mt-1 border-t border-slate-100 dark:border-slate-800 pt-3',
+                            route().current('catalog.menus.*') ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        ]">
+                        Menu Management
+                    </Link>
                 </div>
             </div>
 

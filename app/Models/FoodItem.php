@@ -25,4 +25,18 @@ class FoodItem extends Model
     {
         return $this->hasMany(FoodItemVariation::class);
     }
+
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'branch_food_item')
+            ->withPivot(['custom_price', 'is_active'])
+            ->withTimestamps();
+    }
+
+    public function menus()
+    {
+        return $this->belongsToMany(Menu::class, 'food_item_menu')
+            ->withPivot('price')
+            ->withTimestamps();
+    }
 }
