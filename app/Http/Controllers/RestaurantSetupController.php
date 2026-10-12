@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use App\Models\Company;
 use App\Models\Branch;
 use App\Models\Floor;
@@ -36,10 +37,18 @@ class RestaurantSetupController extends Controller
             'name' => 'required|string',
             'address' => 'nullable|string',
             'phone' => 'nullable|string',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
+            'payment_types' => 'nullable|array',
+            'payment_types.*.id' => 'required_with:payment_types|exists:payment_types,id',
+            'payment_types.*.tax_percentage' => 'nullable|numeric|min:0',
+            'payment_types.*.selected' => 'nullable|boolean',
         ]);
         if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        Branch::create($validated);
+        
+        $branch = Branch::create(Arr::except($validated, ['payment_types']));
+        if ($request->has('payment_types')) {
+            $this->syncPayments($branch, $request->input('payment_types'));
+        }
         return back();
     }
     public function updateBranch(Request $request, Branch $branch) {
@@ -49,15 +58,36 @@ class RestaurantSetupController extends Controller
             'name' => 'required|string',
             'address' => 'nullable|string',
             'phone' => 'nullable|string',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
+            'payment_types' => 'nullable|array',
+            'payment_types.*.id' => 'required_with:payment_types|exists:payment_types,id',
+            'payment_types.*.tax_percentage' => 'nullable|numeric|min:0',
+            'payment_types.*.selected' => 'nullable|boolean',
         ]);
         if (!isset($validated['is_active'])) $validated['is_active'] = false;
-        $branch->update($validated);
+        
+        $branch->update(Arr::except($validated, ['payment_types']));
+        if ($request->has('payment_types')) {
+            $this->syncPayments($branch, $request->input('payment_types'));
+        }
         return back();
     }
     public function destroyBranch(Branch $branch) {
         $branch->delete();
         return back();
+    }
+
+    protected function syncPayments(Branch $branch, $paymentTypes) {
+        $syncData = [];
+        if (!empty($paymentTypes) && is_array($paymentTypes)) {
+            foreach ($paymentTypes as $pt) {
+                $isSelected = array_key_exists('selected', $pt) ? (bool)$pt['selected'] : true;
+                if ($isSelected && !empty($pt['id'])) {
+                    $syncData[$pt['id']] = ['tax_percentage' => $pt['tax_percentage'] ?? 0];
+                }
+            }
+        }
+        $branch->paymentTypes()->sync($syncData);
     }
 
     public function syncBranchPayments(Request $request, Branch $branch) {
@@ -67,14 +97,7 @@ class RestaurantSetupController extends Controller
             'payment_types.*.tax_percentage' => 'required|numeric|min:0'
         ]);
 
-        $syncData = [];
-        if (!empty($validated['payment_types'])) {
-            foreach ($validated['payment_types'] as $pt) {
-                $syncData[$pt['id']] = ['tax_percentage' => $pt['tax_percentage']];
-            }
-        }
-
-        $branch->paymentTypes()->sync($syncData);
+        $this->syncPayments($branch, $validated['payment_types'] ?? []);
         return back()->with('success', 'Branch payment methods updated successfully.');
     }
 
