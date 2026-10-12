@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             IngredientGroupSeeder::class,
             IngredientUnitSeeder::class,
             IngredientItemSeeder::class,
+            PaymentTypeSeeder::class,
         ]);
     }
 }

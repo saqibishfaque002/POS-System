@@ -35,4 +35,11 @@ class Branch extends Model
             ->withPivot(['custom_price', 'is_active'])
             ->withTimestamps();
     }
+
+    public function paymentTypes()
+    {
+        return $this->belongsToMany(PaymentType::class, 'branch_payment_type')
+                    ->withPivot('tax_percentage')
+                    ->withTimestamps();
+    }
 }

@@ -28,8 +28,8 @@ class SettingController extends Controller
             'cities' => City::with('province.country')->orderBy('name')->get(),
             'companies' => Company::orderBy('name')->get(),
             'branches' => $isAdmin 
-                ? Branch::with(['company', 'city.province.country'])->orderBy('name')->get()
-                : Branch::with(['company', 'city.province.country'])->whereIn('id', $branchIds)->orderBy('name')->get(),
+                ? Branch::with(['company', 'city.province.country', 'paymentTypes'])->orderBy('name')->get()
+                : Branch::with(['company', 'city.province.country', 'paymentTypes'])->whereIn('id', $branchIds)->orderBy('name')->get(),
             'floors' => $isAdmin
                 ? Floor::with('branch.company')->orderBy('name')->get()
                 : Floor::with('branch.company')->whereIn('branch_id', $branchIds)->orderBy('name')->get(),

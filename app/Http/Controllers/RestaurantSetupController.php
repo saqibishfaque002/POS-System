@@ -60,6 +60,24 @@ class RestaurantSetupController extends Controller
         return back();
     }
 
+    public function syncBranchPayments(Request $request, Branch $branch) {
+        $validated = $request->validate([
+            'payment_types' => 'array',
+            'payment_types.*.id' => 'required|exists:payment_types,id',
+            'payment_types.*.tax_percentage' => 'required|numeric|min:0'
+        ]);
+
+        $syncData = [];
+        if (!empty($validated['payment_types'])) {
+            foreach ($validated['payment_types'] as $pt) {
+                $syncData[$pt['id']] = ['tax_percentage' => $pt['tax_percentage']];
+            }
+        }
+
+        $branch->paymentTypes()->sync($syncData);
+        return back()->with('success', 'Branch payment methods updated successfully.');
+    }
+
     // Floor
     public function storeFloor(Request $request) {
         $validated = $request->validate([

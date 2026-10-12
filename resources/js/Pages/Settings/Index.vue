@@ -177,6 +177,54 @@ const isModalOpen = ref(false);
 const editingItem = ref(null);
 let form = useForm({});
 
+// Branch Payments Modal State
+const isPaymentModalOpen = ref(false);
+const paymentBranch = ref(null);
+const paymentForm = useForm({
+    payment_types: []
+});
+
+const openPaymentModal = (branch) => {
+    paymentBranch.value = branch;
+    
+    // Map globally available payment types and merge with existing pivot data
+    const existingPivots = branch.payment_types || [];
+    
+    paymentForm.payment_types = props.paymentTypes.map(pt => {
+        const existing = existingPivots.find(ep => ep.id === pt.id);
+        return {
+            id: pt.id,
+            name: pt.name,
+            selected: !!existing,
+            tax_percentage: existing ? existing.pivot.tax_percentage : 0
+        };
+    });
+    
+    isPaymentModalOpen.value = true;
+};
+
+const closePaymentModal = () => {
+    isPaymentModalOpen.value = false;
+    paymentBranch.value = null;
+    paymentForm.reset();
+};
+
+const submitPaymentForm = () => {
+    // Filter only selected payment types to send to server
+    const dataToSend = paymentForm.payment_types
+        .filter(pt => pt.selected)
+        .map(pt => ({
+            id: pt.id,
+            tax_percentage: pt.tax_percentage
+        }));
+        
+    const payload = useForm({ payment_types: dataToSend });
+    
+    payload.post(route('restaurant.branches.payments.sync', paymentBranch.value.id), {
+        onSuccess: () => closePaymentModal(),
+    });
+};
+
 const formFields = computed(() => {
     switch (activeTab.value) {
         case 'countries': return [
@@ -565,6 +613,18 @@ const submitPosSettings = () => {
                             </button>
                         </template>
 
+                        <template #row-actions="{item}">
+                            <div class="flex items-center justify-end gap-3">
+                                <button v-if="activeTab === 'branches'" @click="openPaymentModal(item)" class="text-indigo-600 hover:text-indigo-800 dark:text-[#06b6d4] dark:hover:text-cyan-300 transition-colors" title="Manage Payments">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                </button>
+                                <button @click="openModal(item)" class="text-indigo-600 hover:text-indigo-900 dark:text-[#06b6d4] dark:hover:text-cyan-300 transition-colors">Edit</button>
+                                <button @click="deleteItem(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors">Delete</button>
+                            </div>
+                        </template>
+
                         <template #cell-country_id="{item}">
                             {{ item.country?.name || item.country_id }}
                         </template>
@@ -636,6 +696,44 @@ const submitPosSettings = () => {
                     <button type="button" @click="closeModal" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">Cancel</button>
                     <button type="submit" class="pos-btn-primary !py-2 !px-4" :disabled="form.processing">
                         {{ editingItem ? 'Save Changes' : 'Create' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Branch Payments Sync Modal -->
+    <div v-if="isPaymentModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="dashboard-card w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-xl font-bold mb-2 text-slate-800 dark:text-white">
+                Manage Payment Methods
+            </h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                Branch: <strong class="text-slate-700 dark:text-slate-200">{{ paymentBranch?.name }}</strong>
+            </p>
+            
+            <form @submit.prevent="submitPaymentForm" class="flex flex-col">
+                <div class="space-y-4 mb-6">
+                    <div v-for="(pt, index) in paymentForm.payment_types" :key="pt.id" class="flex items-center gap-4 p-4 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-800/30">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" v-model="pt.selected" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-500"></div>
+                        </label>
+                        <div class="flex-1 font-bold text-slate-700 dark:text-slate-300">{{ pt.name }}</div>
+                        <div v-if="pt.selected" class="flex items-center gap-2">
+                            <label class="text-sm text-slate-500">Tax (%)</label>
+                            <input type="number" step="0.01" min="0" v-model="pt.tax_percentage" class="pos-input !py-1.5 w-24" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    <div v-if="paymentForm.payment_types.length === 0" class="text-center text-slate-500 py-4">
+                        No global payment types found. Please create them first in the Payment Types tab.
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button type="button" @click="closePaymentModal" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">Cancel</button>
+                    <button type="submit" class="pos-btn-primary !py-2 !px-4">
+                        Save Payment Methods
                     </button>
                 </div>
             </form>

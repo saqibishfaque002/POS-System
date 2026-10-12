@@ -129,6 +129,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/branches', [\App\Http\Controllers\RestaurantSetupController::class, 'storeBranch'])->name('branches.store');
             Route::put('/branches/{branch}', [\App\Http\Controllers\RestaurantSetupController::class, 'updateBranch'])->name('branches.update');
             Route::delete('/branches/{branch}', [\App\Http\Controllers\RestaurantSetupController::class, 'destroyBranch'])->name('branches.destroy');
+            Route::post('/branches/{branch}/sync-payments', [\App\Http\Controllers\RestaurantSetupController::class, 'syncBranchPayments'])->name('branches.payments.sync');
 
             Route::post('/floors', [\App\Http\Controllers\RestaurantSetupController::class, 'storeFloor'])->name('floors.store');
             Route::put('/floors/{floor}', [\App\Http\Controllers\RestaurantSetupController::class, 'updateFloor'])->name('floors.update');
