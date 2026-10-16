@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -12,8 +12,15 @@ const props = defineProps({
     ingredientItems: Array,
 });
 
-
 const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || 'ingredientUnits');
+
+watch(activeTab, (newTab) => {
+    if (newTab && typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', newTab);
+        window.history.replaceState({}, '', url.toString());
+    }
+});
 
 const tabs = [
     { id: 'ingredientUnits', label: 'Ingredient Units' },

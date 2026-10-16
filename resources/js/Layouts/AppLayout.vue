@@ -70,7 +70,7 @@ onMounted(() => {
                 </slot>
 
                 <!-- Content Slot -->
-                <main class="flex-1">
+                <main class="flex-1 min-w-0">
                     <slot />
                 </main>
             </div>

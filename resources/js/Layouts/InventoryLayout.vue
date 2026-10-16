@@ -1,5 +1,6 @@
 <script setup>
 import AppLayout from './AppLayout.vue';
+import InventorySidebar from '@/Components/InventorySidebar.vue';
 
 defineProps({
     title: {
@@ -16,12 +17,14 @@ defineProps({
 <template>
     <AppLayout :title="title">
         <template #sidebar>
-            <slot name="sidebar" />
+            <slot name="sidebar">
+                <InventorySidebar />
+            </slot>
         </template>
         
         <slot />
 
-        <template #modals>
+        <template #modals v-if="$slots.modals">
             <slot name="modals" />
         </template>
     </AppLayout>
