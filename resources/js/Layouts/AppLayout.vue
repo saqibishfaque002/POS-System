@@ -43,7 +43,7 @@ onMounted(() => {
 
     <div class="min-h-screen flex flex-col transition-colors duration-300 bg-slate-50 dark:bg-slate-900">
         <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-            <header :class="['dashboard-card px-6 py-4 flex justify-between items-center mb-6 border-t-4', headerColorClass]">
+            <header class="dashboard-card px-6 py-4 flex justify-between items-center mb-6">
                 <div class="flex items-center gap-4">
                     <h1 class="text-xl font-semibold text-indigo-500 dark:text-[#06b6d4]">{{ title }}</h1>
                     <div class="hidden md:flex items-center gap-3 ml-4 border-l pl-4 border-slate-200 dark:border-slate-700">

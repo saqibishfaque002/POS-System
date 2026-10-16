@@ -199,14 +199,13 @@ const deleteRecipe = (recipe) => {
 </script>
 
 <template>
-    <InventoryLayout title="Recipes & BOM" headerColorClass="border-t-indigo-500">
-        <div class="dashboard-card p-6 border-t-4 border-t-indigo-500">
-            <DataTable title="Recipes & BOM" :data="recipes" :columns="columns" @edit="openModal" @delete="deleteRecipe">
-                <template #actions>
-                    <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm !bg-indigo-600 hover:!bg-indigo-700 dark:!bg-indigo-600 dark:hover:!bg-indigo-500">
-                        + Create Recipe
-                    </button>
-                </template>
+    <InventoryLayout title="Recipes & BOM">
+        <DataTable title="Recipes & BOM" :data="recipes" :columns="columns" @edit="openModal" @delete="deleteRecipe">
+            <template #actions>
+                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
+                    + Create Recipe
+                </button>
+            </template>
                             
                             <template #cell-item_name="{ item }">
                                 <span class="font-bold text-slate-700 dark:text-slate-300">
@@ -240,11 +239,10 @@ const deleteRecipe = (recipe) => {
                                 </span>
                             </template>
                         </DataTable>
-        </div>
         
         <template #modals>
             <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                <div class="dashboard-card w-full max-w-5xl p-6 max-h-[90vh] overflow-y-auto border-t-4 border-t-indigo-500">
+                <div class="dashboard-card w-full max-w-5xl p-6 max-h-[90vh] overflow-y-auto">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-white">{{ editingRecipe ? 'Edit' : 'New' }} Recipe / BOM</h2>
                         <button @click="closeModal" class="text-slate-400 hover:text-slate-500 focus:outline-none">

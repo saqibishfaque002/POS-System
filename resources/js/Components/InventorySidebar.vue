@@ -21,19 +21,13 @@ onMounted(() => {
     const saved = localStorage.getItem('inventorySidebarState');
     if (saved) {
         expandedCategories.value = JSON.parse(saved);
-        // Force accordion constraint in case old state had multiple true
-        let foundOpen = false;
-        Object.keys(expandedCategories.value).forEach(k => {
-            if (expandedCategories.value[k]) {
-                if (foundOpen) expandedCategories.value[k] = false;
-                else foundOpen = true;
-            }
-        });
     } else {
         if (route().current('trade.*')) {
             expandedCategories.value.purchase = true;
+            expandedCategories.value.catalog = true;
         } else if (route().current('ingredients.*')) {
             expandedCategories.value.ingredients = true;
+            expandedCategories.value.catalog = true;
         } else {
             expandedCategories.value.catalog = true;
         }
@@ -45,11 +39,7 @@ watch(expandedCategories, (newVal) => {
 }, { deep: true });
 
 const toggleCategory = (cat) => {
-    const isOpening = !expandedCategories.value[cat];
-    if (isOpening) {
-        Object.keys(expandedCategories.value).forEach(k => expandedCategories.value[k] = false);
-    }
-    expandedCategories.value[cat] = isOpening;
+    expandedCategories.value[cat] = !expandedCategories.value[cat];
 };
 
 const tabs = [

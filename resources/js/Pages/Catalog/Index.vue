@@ -170,49 +170,37 @@ const deleteItem = (item) => {
 </script>
 
 <template>
-    <AppLayout title="Catalog Management" headerColorClass="border-t-indigo-500">
+    <AppLayout title="Inventory Management">
         <template #sidebar>
             <InventorySidebar v-model:activeTab="activeTab" />
         </template>
         
-        <div class="dashboard-card p-6 border-t-4 border-t-indigo-500">
-            <DataTable :title="tabs.find(t => t.id === activeTab)?.label || 'Catalog'" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
-                <template #actions>
-                    <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
-                        + Add New
-                    </button>
-                </template>
+        <DataTable :title="tabs.find(t => t.id === activeTab)?.label || 'Catalog'" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
+            <template #actions>
+                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
+                    + Add New
+                </button>
+            </template>
 
-                        <template #cell-food_group_id="{item}">
-                            {{ item.food_group?.name || item.food_group_id }}
-                        </template>
-                        <template #cell-property_group_id="{item}">
-                            {{ item.property_group?.name || item.property_group_id }}
-                        </template>
-                        <template #cell-food_item_id="{item}">
-                            {{ item.food_item?.name || item.food_item_id }}
-                        </template>
-                        <template #cell-is_active="{item}">
-                            <span :class="item.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full text-xs font-bold' : 'bg-slate-100 text-slate-800 dark:bg-slate-700/50 dark:text-slate-400 px-2.5 py-0.5 rounded-full text-xs font-bold'">
-                                {{ item.is_active ? 'Active' : 'Inactive' }}
-                            </span>
-                        </template>
-                        <template #cell-is_multiple="{item}">
-                            <span :class="item.is_multiple ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 px-2.5 py-0.5 rounded-full text-xs font-bold' : 'bg-slate-100 text-slate-800 dark:bg-slate-700/50 dark:text-slate-400 px-2.5 py-0.5 rounded-full text-xs font-bold'">
-                                {{ item.is_multiple ? 'Yes' : 'No' }}
-                            </span>
-                        </template>
-                        <template #cell-base_price="{item}">
-                            ${{ parseFloat(item.base_price || 0).toFixed(2) }}
-                        </template>
-                        <template #cell-extra_price="{item}">
-                            ${{ parseFloat(item.extra_price || 0).toFixed(2) }}
-                        </template>
-                        <template #cell-price="{item}">
-                            ${{ parseFloat(item.price || 0).toFixed(2) }}
-                        </template>
-            </DataTable>
-        </div>
+            <template #cell-food_group_id="{item}">
+                {{ item.food_group?.name || item.food_group_id }}
+            </template>
+            <template #cell-property_group_id="{item}">
+                {{ item.property_group?.name || item.property_group_id }}
+            </template>
+            <template #cell-food_item_id="{item}">
+                {{ item.food_item?.name || item.food_item_id }}
+            </template>
+            <template #cell-base_price="{item}">
+                ${{ parseFloat(item.base_price || 0).toFixed(2) }}
+            </template>
+            <template #cell-extra_price="{item}">
+                ${{ parseFloat(item.extra_price || 0).toFixed(2) }}
+            </template>
+            <template #cell-price="{item}">
+                ${{ parseFloat(item.price || 0).toFixed(2) }}
+            </template>
+        </DataTable>
 
         <template #modals>
             <CatalogFormModal 

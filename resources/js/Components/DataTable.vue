@@ -1,5 +1,6 @@
 <script setup>
 import { defineProps, defineEmits, ref, computed } from 'vue';
+import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({
     columns: Array,
@@ -58,7 +59,16 @@ const filteredData = computed(() => {
                 <tbody class="divide-y divide-erp-border-light dark:divide-erp-border-dark">
                     <tr v-for="row in filteredData" :key="row.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                         <td v-for="col in columns" :key="col.key" class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
-                            <slot :name="'cell-'+col.key" :item="row">{{ row[col.key] }}</slot>
+                            <slot :name="'cell-'+col.key" :item="row">
+                                <StatusBadge v-if="col.key === 'is_active'" :value="row[col.key]" />
+                                <StatusBadge v-else-if="col.key === 'status'" :value="row[col.key]" />
+                                <span v-else-if="col.key === 'is_multiple'" :class="row.is_multiple ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 px-2.5 py-0.5 rounded-full text-xs font-bold' : 'bg-slate-100 text-slate-800 dark:bg-slate-700/50 dark:text-slate-400 px-2.5 py-0.5 rounded-full text-xs font-bold'">
+                                    {{ row.is_multiple ? 'Yes' : 'No' }}
+                                </span>
+                                <template v-else>
+                                    {{ row[col.key] }}
+                                </template>
+                            </slot>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
                             <slot name="row-actions" :item="row">

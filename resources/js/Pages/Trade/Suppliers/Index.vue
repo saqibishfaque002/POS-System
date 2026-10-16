@@ -100,34 +100,13 @@ const actions = [
 
 <template>
     <InventoryLayout title="Suppliers">
-        <div class="dashboard-card p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    Manage Suppliers
-                </h2>
-                <PrimaryButton @click="openModal()" class="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                    </svg>
-                    New Supplier
-                </PrimaryButton>
-            </div>
-
-            <DataTable :data="suppliers" :columns="columns" title="Suppliers">
-                <template #cell-is_active="{item}">
-                    <span :class="item.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full text-xs font-bold' : 'bg-slate-100 text-slate-800 dark:bg-slate-700/50 dark:text-slate-400 px-2.5 py-0.5 rounded-full text-xs font-bold'">
-                        {{ item.is_active ? 'Active' : 'Inactive' }}
-                    </span>
-                </template>
-                <template #row-actions="{item}">
-                    <button @click="openModal(item)" class="text-indigo-600 hover:text-indigo-900 dark:text-[#06b6d4] dark:hover:text-cyan-300 mr-4 transition-colors">Edit</button>
-                    <button @click="deleteSupplier(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors">Delete</button>
-                </template>
-            </DataTable>
-        </div>
+        <DataTable :data="suppliers" :columns="columns" title="Suppliers" @edit="openModal" @delete="deleteSupplier">
+            <template #actions>
+                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
+                    + Add New
+                </button>
+            </template>
+        </DataTable>
 
         <!-- Supplier Form Modal -->
         <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">

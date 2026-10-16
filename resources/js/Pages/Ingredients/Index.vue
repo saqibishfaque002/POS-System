@@ -146,38 +146,31 @@ const deleteItem = (item) => {
 </script>
 
 <template>
-    <AppLayout title="Ingredients Management" headerColorClass="border-t-indigo-500">
+    <AppLayout title="Ingredients Management">
         <template #sidebar>
             <InventorySidebar v-model:activeTab="activeTab" />
         </template>
         
-        <div class="dashboard-card p-6 border-t-4 border-t-indigo-500">
-            <DataTable :title="tabs.find(t => t.id === activeTab)?.label" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
-                <template #actions>
-                    <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
-                        + Add New
-                    </button>
-                </template>
+        <DataTable :title="tabs.find(t => t.id === activeTab)?.label" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
+            <template #actions>
+                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
+                    + Add New
+                </button>
+            </template>
 
-                        <template #cell-ingredient_group_id="{item}">
-                            {{ item.group?.name || item.ingredient_group_id }}
-                        </template>
-                        <template #cell-purchase_unit_id="{item}">
-                            {{ item.purchase_unit?.name || item.purchase_unit_id }}
-                        </template>
-                        <template #cell-consumption_unit_id="{item}">
-                            {{ item.consumption_unit?.name || item.consumption_unit_id }}
-                        </template>
-                        <template #cell-base_price="{item}">
-                            ${{ parseFloat(item.base_price).toFixed(2) }}
-                        </template>
-                        <template #cell-is_active="{item}">
-                            <span :class="item.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full text-xs font-bold' : 'bg-slate-100 text-slate-800 dark:bg-slate-700/50 dark:text-slate-400 px-2.5 py-0.5 rounded-full text-xs font-bold'">
-                                {{ item.is_active ? 'Active' : 'Inactive' }}
-                            </span>
-                        </template>
-            </DataTable>
-        </div>
+            <template #cell-ingredient_group_id="{item}">
+                {{ item.group?.name || item.ingredient_group_id }}
+            </template>
+            <template #cell-purchase_unit_id="{item}">
+                {{ item.purchase_unit?.name || item.purchase_unit_id }}
+            </template>
+            <template #cell-consumption_unit_id="{item}">
+                {{ item.consumption_unit?.name || item.consumption_unit_id }}
+            </template>
+            <template #cell-base_price="{item}">
+                ${{ parseFloat(item.base_price).toFixed(2) }}
+            </template>
+        </DataTable>
 
         <template #modals>
             <IngredientsFormModal 

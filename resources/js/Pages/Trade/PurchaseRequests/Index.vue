@@ -104,38 +104,25 @@ const columns = computed(() => [
 </script>
 
 <template>
-    <InventoryLayout title="Purchase Requests" headerColorClass="border-t-yellow-500">
-        <div class="dashboard-card p-6 border-t-4 border-t-yellow-500">
-            <DataTable title="Purchase Requests" :data="purchaseRequests" :columns="columns">
-                            <template #actions>
-                                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
-                                    + Create PR
-                                </button>
-                            </template>
-                            <template #cell-branch_id="{ item }">
-                                {{ item.branch?.name }}
-                            </template>
-                            <template #cell-status="{ item }">
-                                <span class="px-2 py-1 rounded-full text-xs font-bold"
-                                      :class="{
-                                        'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300': item.status === 'draft',
-                                        'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400': item.status === 'pending_approval',
-                                        'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400': item.status === 'approved',
-                                        'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400': item.status === 'rejected'
-                                      }">
-                                    {{ item.status.replace('_', ' ').toUpperCase() }}
-                                </span>
-                            </template>
-                            <template #row-actions="{ item }">
-                                <button v-if="item.status === 'draft'" @click="openModal(item)" class="text-indigo-600 hover:text-indigo-800 dark:text-[#06b6d4] dark:hover:text-cyan-300 mr-3 text-xs font-bold transition-colors">Edit</button>
-                                <button v-if="item.status === 'draft'" @click="changeStatus(item, 'pending_approval')" class="text-yellow-600 hover:text-yellow-800 mr-3 text-xs font-bold transition-colors">Submit</button>
-                                <button v-if="item.status === 'pending_approval'" @click="changeStatus(item, 'approved')" class="text-green-600 hover:text-green-800 mr-3 text-xs font-bold transition-colors">Approve</button>
-                                <button v-if="item.status === 'pending_approval'" @click="changeStatus(item, 'rejected')" class="text-red-600 hover:text-red-800 mr-3 text-xs font-bold transition-colors">Reject</button>
-                                <button v-if="item.status === 'draft'" @click="deletePr(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs font-bold transition-colors mr-3">Delete</button>
-                                <a :href="route('trade.purchase-requests.print', item.id)" target="_blank" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 text-xs font-bold transition-colors">Print</a>
-                            </template>
-            </DataTable>
-        </div>
+    <InventoryLayout title="Purchase Requests">
+        <DataTable title="Purchase Requests" :data="purchaseRequests" :columns="columns">
+            <template #actions>
+                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
+                    + Create PR
+                </button>
+            </template>
+            <template #cell-branch_id="{ item }">
+                {{ item.branch?.name }}
+            </template>
+            <template #row-actions="{ item }">
+                <button v-if="item.status === 'draft'" @click="openModal(item)" class="text-indigo-600 hover:text-indigo-800 dark:text-[#06b6d4] dark:hover:text-cyan-300 mr-3 text-xs font-bold transition-colors">Edit</button>
+                <button v-if="item.status === 'draft'" @click="changeStatus(item, 'pending_approval')" class="text-yellow-600 hover:text-yellow-800 mr-3 text-xs font-bold transition-colors">Submit</button>
+                <button v-if="item.status === 'pending_approval'" @click="changeStatus(item, 'approved')" class="text-green-600 hover:text-green-800 mr-3 text-xs font-bold transition-colors">Approve</button>
+                <button v-if="item.status === 'pending_approval'" @click="changeStatus(item, 'rejected')" class="text-red-600 hover:text-red-800 mr-3 text-xs font-bold transition-colors">Reject</button>
+                <button v-if="item.status === 'draft'" @click="deletePr(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs font-bold transition-colors mr-3">Delete</button>
+                <a :href="route('trade.purchase-requests.print', item.id)" target="_blank" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 text-xs font-bold transition-colors">Print</a>
+            </template>
+        </DataTable>
         
         <template #modals>
             <TradeDocumentFormModal
@@ -148,7 +135,6 @@ const columns = computed(() => [
                 :units="units"
                 :has-date="true"
                 date-label="Date"
-                theme-class="border-t-4 border-t-yellow-500"
                 @close="isModalOpen = false"
                 @submit="submitForm"
                 @item-select="onItemSelect"

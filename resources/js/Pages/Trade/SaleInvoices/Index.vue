@@ -1,38 +1,9 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { Head, useForm, Link, router } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { useForm, router } from '@inertiajs/vue3';
+import InventoryLayout from '@/Layouts/InventoryLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
-import InventorySidebar from '@/Components/InventorySidebar.vue';
 import SelectInput from '@/Components/SelectInput.vue';
-
-const props = defineProps({
-    saleInvoices: Array,
-    branches: Array,
-    items: Array, // FoodItems
-});
-
-const isDark = ref(false);
-
-const toggleTheme = () => {
-    isDark.value = !isDark.value;
-    if (isDark.value) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-    }
-};
-
-onMounted(() => {
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        isDark.value = true;
-        document.documentElement.classList.add('dark');
-    } else {
-        isDark.value = false;
-        document.documentElement.classList.remove('dark');
-    }
-});
 
 const isModalOpen = ref(false);
 const editingSi = ref(null);
@@ -224,86 +195,45 @@ const formTotal = computed(() => {
 </script>
 
 <template>
-    <Head title="Sale Invoices" />
-
-    <div class="min-h-screen flex flex-col transition-colors duration-300 bg-slate-50 dark:bg-slate-900">
-        <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-            <header class="dashboard-card px-6 py-4 flex justify-between items-center mb-6 border-t-4 border-t-emerald-500">
-                <div class="flex items-center gap-4">
-                    <h1 class="text-xl font-semibold text-emerald-500 dark:text-emerald-400">Sale Invoices</h1>
-                    <div class="hidden md:flex items-center gap-3 ml-4 border-l pl-4 border-slate-200 dark:border-slate-700">
-                        <Link :href="route('dashboard')" class="text-sm font-bold text-slate-600 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors flex items-center gap-1">
-                            &larr; Back to Dashboard
-                        </Link>
-                    </div>
-                </div>
-                
-                <button @click="toggleTheme" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                    <svg v-if="!isDark" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
+    <InventoryLayout title="Sale Invoices">
+        <DataTable title="Sale Invoices" :data="saleInvoices" :columns="columns">
+            <template #actions>
+                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
+                    + Create Invoice
                 </button>
-            </header>
+            </template>
+            <template #cell-branch_id="{ item }">
+                {{ item.branch?.name }}
+            </template>
+            <template #cell-customer_name="{ item }">
+                <div class="flex flex-col">
+                    <span class="font-bold text-slate-700 dark:text-slate-300">
+                        {{ item.customer_name || 'Walk-in Customer' }}
+                    </span>
+                    <span v-if="item.customer_phone" class="text-xs text-slate-500">
+                        {{ item.customer_phone }}
+                    </span>
+                </div>
+            </template>
+            <template #cell-total_amount="{ item }">
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">
+                    ${{ parseFloat(item.total_amount).toFixed(2) }}
+                </span>
+            </template>
+            <template #row-actions="{ item }">
+                <button v-if="item.status === 'draft'" @click="openModal(item)" class="text-indigo-600 hover:text-indigo-800 dark:text-[#06b6d4] dark:hover:text-cyan-300 mr-3 text-xs font-bold transition-colors">Edit</button>
+                <button v-if="item.status === 'draft'" @click="changeStatus(item, 'approved')" class="text-blue-600 hover:text-blue-800 mr-3 text-xs font-bold transition-colors">Approve</button>
+                <button v-if="item.status === 'approved'" @click="changeStatus(item, 'paid')" class="text-emerald-600 hover:text-emerald-800 mr-3 text-xs font-bold transition-colors">Mark Paid</button>
+                <button v-if="['draft', 'approved'].includes(item.status)" @click="changeStatus(item, 'cancelled')" class="text-red-600 hover:text-red-800 mr-3 text-xs font-bold transition-colors">Cancel</button>
+                <button v-if="item.status === 'draft'" @click="deleteSi(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs font-bold transition-colors mr-3">Delete</button>
+                <a :href="route('trade.sale-invoices.print', item.id)" target="_blank" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 text-xs font-bold transition-colors">Print</a>
+            </template>
+        </DataTable>
 
-            <div class="flex flex-col md:flex-row gap-6">
-                <InventorySidebar />
-
-                <main class="flex-1">
-                    <div class="dashboard-card p-6 border-t-4 border-t-emerald-500">
-                        <DataTable title="Sale Invoices" :data="saleInvoices" :columns="columns">
-                            <template #actions>
-                                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm !bg-emerald-600 hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-500">
-                                    + Create Invoice
-                                </button>
-                            </template>
-                            <template #cell-branch_id="{ item }">
-                                {{ item.branch?.name }}
-                            </template>
-                            <template #cell-customer_name="{ item }">
-                                <div class="flex flex-col">
-                                    <span class="font-bold text-slate-700 dark:text-slate-300">
-                                        {{ item.customer_name || 'Walk-in Customer' }}
-                                    </span>
-                                    <span v-if="item.customer_phone" class="text-xs text-slate-500">
-                                        {{ item.customer_phone }}
-                                    </span>
-                                </div>
-                            </template>
-                            <template #cell-total_amount="{ item }">
-                                <span class="font-bold text-emerald-600 dark:text-emerald-400">
-                                    ${{ parseFloat(item.total_amount).toFixed(2) }}
-                                </span>
-                            </template>
-                            <template #cell-status="{ item }">
-                                <span class="px-2 py-1 rounded-full text-xs font-bold"
-                                      :class="{
-                                        'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300': item.status === 'draft',
-                                        'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400': item.status === 'approved',
-                                        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400': item.status === 'paid',
-                                        'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400': item.status === 'cancelled'
-                                      }">
-                                    {{ item.status.replace('_', ' ').toUpperCase() }}
-                                </span>
-                            </template>
-                            <template #row-actions="{ item }">
-                                <button v-if="item.status === 'draft'" @click="openModal(item)" class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 mr-3 text-xs font-bold transition-colors">Edit</button>
-                                <button v-if="item.status === 'draft'" @click="changeStatus(item, 'approved')" class="text-blue-600 hover:text-blue-800 mr-3 text-xs font-bold transition-colors">Approve</button>
-                                <button v-if="item.status === 'approved'" @click="changeStatus(item, 'paid')" class="text-emerald-600 hover:text-emerald-800 mr-3 text-xs font-bold transition-colors">Mark Paid</button>
-                                <button v-if="['draft', 'approved'].includes(item.status)" @click="changeStatus(item, 'cancelled')" class="text-red-600 hover:text-red-800 mr-3 text-xs font-bold transition-colors">Cancel</button>
-                                <button v-if="item.status === 'draft'" @click="deleteSi(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs font-bold transition-colors mr-3">Delete</button>
-                                <a :href="route('trade.sale-invoices.print', item.id)" target="_blank" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 text-xs font-bold transition-colors">Print</a>
-                            </template>
-                        </DataTable>
-                    </div>
-                </main>
-            </div>
-            
+        <template #modals>
             <!-- Modal Form -->
             <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                <div class="dashboard-card w-full max-w-[95vw] lg:max-w-7xl p-6 max-h-[90vh] overflow-y-auto border-t-4 border-t-emerald-500">
+                <div class="dashboard-card w-full max-w-[95vw] lg:max-w-7xl p-6 max-h-[90vh] overflow-y-auto">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-xl font-bold text-slate-800 dark:text-white">{{ editingSi ? 'Edit' : 'New' }} Sale Invoice</h2>
                     </div>
@@ -446,7 +376,6 @@ const formTotal = computed(() => {
                     </form>
                 </div>
             </div>
-
-        </div>
-    </div>
+        </template>
+    </InventoryLayout>
 </template>

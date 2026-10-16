@@ -53,8 +53,7 @@ const markAsCompleted = (production) => {
 <template>
     <Head title="Kitchen Production" />
 
-    <AppLayout title="Kitchen Production" headerColorClass="border-t-indigo-500">
-        <div class="dashboard-card p-6 border-t-4 border-t-indigo-500">
+    <AppLayout title="Kitchen Production">
             <DataTable
                 :data="productions"
                 :columns="columns"
@@ -101,7 +100,6 @@ const markAsCompleted = (production) => {
                     <button v-if="item.status !== 'completed'" @click="deleteProduction(item)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs font-bold transition-colors">Delete</button>
                 </template>
             </DataTable>
-        </div>
 
         <ProductionFormModal 
             :is-open="isModalOpen"
