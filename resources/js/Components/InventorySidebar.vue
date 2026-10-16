@@ -76,6 +76,32 @@ const tradeItems = [
     { id: 'saleReturns', label: 'Sale Return', route: 'trade.sale-returns.index', routePattern: 'trade.sale-returns.*', type: 'route', icon: 'arrow-path' },
 ];
 
+// Search filter state for sidebar items
+const searchQuery = ref('');
+const isSearching = computed(() => searchQuery.value.trim().length > 0);
+
+const filteredCatalogItems = computed(() => {
+    if (!isSearching.value) return catalogItems;
+    const q = searchQuery.value.toLowerCase().trim();
+    return catalogItems.filter(item => item.label.toLowerCase().includes(q));
+});
+
+const filteredIngredientItems = computed(() => {
+    if (!isSearching.value) return ingredientItems;
+    const q = searchQuery.value.toLowerCase().trim();
+    return ingredientItems.filter(item => item.label.toLowerCase().includes(q));
+});
+
+const filteredTradeItems = computed(() => {
+    if (!isSearching.value) return tradeItems;
+    const q = searchQuery.value.toLowerCase().trim();
+    return tradeItems.filter(item => item.label.toLowerCase().includes(q));
+});
+
+const totalMatches = computed(() => {
+    return filteredCatalogItems.value.length + filteredIngredientItems.value.length + filteredTradeItems.value.length;
+});
+
 // Detect current active section dynamically from current route
 const detectActiveCategory = () => {
     try {
@@ -194,11 +220,37 @@ onMounted(() => {
                 </span>
             </div>
 
+            <!-- Modern Search Filter -->
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+                    <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input
+                    type="text"
+                    v-model="searchQuery"
+                    placeholder="Filter menu items..."
+                    class="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/90 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 dark:focus:border-[#06b6d4] focus:ring-1 focus:ring-indigo-500/20 dark:focus:ring-cyan-500/20 transition-all"
+                />
+                <button
+                    v-if="searchQuery"
+                    @click="searchQuery = ''"
+                    type="button"
+                    class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    title="Clear filter"
+                >
+                    <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+
             <!-- Category Accordions -->
             <div class="space-y-2">
 
                 <!-- 1. Catalog Management -->
-                <div class="rounded-xl border border-transparent transition-colors">
+                <div v-show="!isSearching || filteredCatalogItems.length > 0" class="rounded-xl border border-transparent transition-colors">
                     <button 
                         @click="toggleCategory('catalog')" 
                         type="button" 
@@ -221,9 +273,9 @@ onMounted(() => {
 
                         <div class="flex items-center gap-1.5">
                             <span v-if="activeCategory === 'catalog'" class="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-cyan-400"></span>
-                            <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{{ catalogItems.length }}</span>
+                            <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{{ isSearching ? filteredCatalogItems.length : catalogItems.length }}</span>
                             <svg 
-                                :class="{'rotate-180': expandedCategories.catalog}" 
+                                :class="{'rotate-180': isSearching || expandedCategories.catalog}" 
                                 class="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200" 
                                 viewBox="0 0 20 20" 
                                 fill="currentColor"
@@ -233,8 +285,8 @@ onMounted(() => {
                         </div>
                     </button>
 
-                    <div v-show="expandedCategories.catalog" class="space-y-1 pt-1.5 pb-1">
-                        <template v-for="item in catalogItems" :key="item.id">
+                    <div v-show="isSearching || expandedCategories.catalog" class="space-y-1 pt-1.5 pb-1">
+                        <template v-for="item in filteredCatalogItems" :key="item.id">
                             <!-- In-page Tab Buttons for catalog.index -->
                             <button
                                 v-if="item.type === 'tab' && route().current('catalog.index')"
@@ -300,7 +352,7 @@ onMounted(() => {
                 </div>
 
                 <!-- 2. Manage Ingredients -->
-                <div class="rounded-xl border border-transparent transition-colors">
+                <div v-show="!isSearching || filteredIngredientItems.length > 0" class="rounded-xl border border-transparent transition-colors">
                     <button 
                         @click="toggleCategory('ingredients')" 
                         type="button" 
@@ -323,9 +375,9 @@ onMounted(() => {
 
                         <div class="flex items-center gap-1.5">
                             <span v-if="activeCategory === 'ingredients'" class="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-cyan-400"></span>
-                            <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{{ ingredientItems.length }}</span>
+                            <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{{ isSearching ? filteredIngredientItems.length : ingredientItems.length }}</span>
                             <svg 
-                                :class="{'rotate-180': expandedCategories.ingredients}" 
+                                :class="{'rotate-180': isSearching || expandedCategories.ingredients}" 
                                 class="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200" 
                                 viewBox="0 0 20 20" 
                                 fill="currentColor"
@@ -335,8 +387,8 @@ onMounted(() => {
                         </div>
                     </button>
 
-                    <div v-show="expandedCategories.ingredients" class="space-y-1 pt-1.5 pb-1">
-                        <template v-for="item in ingredientItems" :key="item.id">
+                    <div v-show="isSearching || expandedCategories.ingredients" class="space-y-1 pt-1.5 pb-1">
+                        <template v-for="item in filteredIngredientItems" :key="item.id">
                             <!-- In-page Tab Buttons for ingredients.index -->
                             <button
                                 v-if="item.type === 'tab' && route().current('ingredients.index')"
@@ -407,7 +459,7 @@ onMounted(() => {
                 </div>
 
                 <!-- 3. Manage Purchase (Trade & Procurement) -->
-                <div class="rounded-xl border border-transparent transition-colors">
+                <div v-show="!isSearching || filteredTradeItems.length > 0" class="rounded-xl border border-transparent transition-colors">
                     <button 
                         @click="toggleCategory('purchase')" 
                         type="button" 
@@ -430,9 +482,9 @@ onMounted(() => {
 
                         <div class="flex items-center gap-1.5">
                             <span v-if="activeCategory === 'purchase'" class="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-cyan-400"></span>
-                            <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{{ tradeItems.length }}</span>
+                            <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{{ isSearching ? filteredTradeItems.length : tradeItems.length }}</span>
                             <svg 
-                                :class="{'rotate-180': expandedCategories.purchase}" 
+                                :class="{'rotate-180': isSearching || expandedCategories.purchase}" 
                                 class="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200" 
                                 viewBox="0 0 20 20" 
                                 fill="currentColor"
@@ -442,9 +494,9 @@ onMounted(() => {
                         </div>
                     </button>
 
-                    <div v-show="expandedCategories.purchase" class="space-y-1 pt-1.5 pb-1">
+                    <div v-show="isSearching || expandedCategories.purchase" class="space-y-1 pt-1.5 pb-1">
                         <Link
-                            v-for="item in tradeItems"
+                            v-for="item in filteredTradeItems"
                             :key="item.id"
                             :href="route(item.route)"
                             :class="[
@@ -462,6 +514,18 @@ onMounted(() => {
                             </div>
                         </Link>
                     </div>
+                </div>
+
+                <!-- Empty Search Results State -->
+                <div v-if="isSearching && totalMatches === 0" class="px-3 py-6 text-center rounded-xl bg-slate-50/70 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-800">
+                    <svg class="w-6 h-6 mx-auto text-slate-300 dark:text-slate-600 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300">No sections found</p>
+                    <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">No match for "{{ searchQuery }}"</p>
+                    <button @click="searchQuery = ''" type="button" class="mt-2.5 px-2.5 py-1 text-[11px] font-bold text-indigo-600 dark:text-[#06b6d4] bg-indigo-50 dark:bg-indigo-950/40 rounded-lg hover:underline transition-all">
+                        Clear filter
+                    </button>
                 </div>
 
             </div>

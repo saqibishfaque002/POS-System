@@ -1,6 +1,8 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { Head, Link, useForm, router } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { useForm, router } from '@inertiajs/vue3';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import SettingsSidebar from '@/Components/SettingsSidebar.vue';
 import DataTable from '@/Components/DataTable.vue';
 import SelectInput from '@/Components/SelectInput.vue';
 
@@ -16,30 +18,15 @@ const props = defineProps({
     paymentTypes: Array,
 });
 
-// Theme logic
-const isDark = ref(false);
-const toggleTheme = () => {
-    isDark.value = !isDark.value;
-    if (isDark.value) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-    }
-};
+const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || 'storeProfile');
 
-onMounted(() => {
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        isDark.value = true;
-        document.documentElement.classList.add('dark');
-    } else {
-        isDark.value = false;
-        document.documentElement.classList.remove('dark');
+watch(activeTab, (newTab) => {
+    if (newTab && typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', newTab);
+        window.history.replaceState({}, '', url.toString());
     }
 });
-
-const activeTab = ref('storeProfile');
 
 const geographicTabs = [
     { id: 'countries', label: 'Countries' },
@@ -62,48 +49,6 @@ const settingTabs = [
 const financialTabs = [
     { id: 'paymentTypes', label: 'Payment Types' },
 ];
-
-const expandedCategories = ref({
-    general: false,
-    geographic: false,
-    restaurant: false,
-    financial: false,
-});
-
-watch(activeTab, (newTab) => {
-    if (settingTabs.some(t => t.id === newTab)) {
-        expandedCategories.value.general = true;
-        expandedCategories.value.geographic = false;
-        expandedCategories.value.restaurant = false;
-        expandedCategories.value.financial = false;
-    }
-    if (geographicTabs.some(t => t.id === newTab)) {
-        expandedCategories.value.geographic = true;
-        expandedCategories.value.general = false;
-        expandedCategories.value.restaurant = false;
-        expandedCategories.value.financial = false;
-    }
-    if (restaurantTabs.some(t => t.id === newTab)) {
-        expandedCategories.value.restaurant = true;
-        expandedCategories.value.general = false;
-        expandedCategories.value.geographic = false;
-        expandedCategories.value.financial = false;
-    }
-    if (financialTabs.some(t => t.id === newTab)) {
-        expandedCategories.value.financial = true;
-        expandedCategories.value.restaurant = false;
-        expandedCategories.value.general = false;
-        expandedCategories.value.geographic = false;
-    }
-}, { immediate: true });
-
-const toggleCategory = (cat) => {
-    const isOpening = !expandedCategories.value[cat];
-    if (isOpening) {
-        Object.keys(expandedCategories.value).forEach(k => expandedCategories.value[k] = false);
-    }
-    expandedCategories.value[cat] = isOpening;
-};
 
 const tabData = computed(() => {
     switch (activeTab.value) {
@@ -378,113 +323,10 @@ const submitPosSettings = () => {
 </script>
 
 <template>
-    <Head title="System Settings" />
-    <div class="min-h-screen flex flex-col transition-colors duration-300">
-        
-        <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6 pb-20">
-            <!-- Header -->
-            <header class="dashboard-card px-6 py-4 flex justify-between items-center mb-6">
-                <div class="flex items-center gap-4">
-                    <h1 class="text-xl font-semibold text-indigo-500 dark:text-[#06b6d4]">System Settings</h1>
-                    <div class="hidden md:flex items-center gap-3 ml-4 border-l pl-4 border-slate-200 dark:border-slate-700">
-                        <Link :href="route('dashboard')" class="text-sm font-bold text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-[#06b6d4] transition-colors flex items-center gap-1">
-                            &larr; Back to Dashboard
-                        </Link>
-                    </div>
-                </div>
-                
-                <button @click="toggleTheme" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                    <svg v-if="!isDark" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#06b6d4]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </button>
-            </header>
-
-            <div class="flex flex-col md:flex-row gap-6">
-                <!-- Sidebar Tabs -->
-                <aside class="w-full md:w-64 shrink-0">
-                    <div class="dashboard-card p-4 space-y-6">
-                        
-                        <div>
-                            <button @click="toggleCategory('general')" type="button" class="w-full flex justify-between items-center text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2 px-2 focus:outline-none">
-                                <span>General Setting</span>
-                                <svg :class="{'rotate-180': expandedCategories.general}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
-                            <div v-show="expandedCategories.general" class="space-y-1">
-                                <button v-for="tab in settingTabs" :key="tab.id" @click="activeTab = tab.id" 
-                                    :class="[
-                                        'w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
-                                        activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                    ]">
-                                    {{ tab.label }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <button @click="toggleCategory('geographic')" type="button" class="w-full flex justify-between items-center text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2 px-2 focus:outline-none">
-                                <span>Geographic Locations</span>
-                                <svg :class="{'rotate-180': expandedCategories.geographic}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
-                            <div v-show="expandedCategories.geographic" class="space-y-1">
-                                <button v-for="tab in geographicTabs" :key="tab.id" @click="activeTab = tab.id" 
-                                    :class="[
-                                        'w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
-                                        activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                    ]">
-                                    {{ tab.label }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <button @click="toggleCategory('restaurant')" type="button" class="w-full flex justify-between items-center text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2 px-2 focus:outline-none">
-                                <span>Manage Restaurant</span>
-                                <svg :class="{'rotate-180': expandedCategories.restaurant}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
-                            <div v-show="expandedCategories.restaurant" class="space-y-1">
-                                <button v-for="tab in restaurantTabs" :key="tab.id" @click="activeTab = tab.id" 
-                                    :class="[
-                                        'w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
-                                        activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                    ]">
-                                    {{ tab.label }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <button @click="toggleCategory('financial')" type="button" class="w-full flex justify-between items-center text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2 px-2 focus:outline-none">
-                                <span>Financial Settings</span>
-                                <svg :class="{'rotate-180': expandedCategories.financial}" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
-                            <div v-show="expandedCategories.financial" class="space-y-1">
-                                <button v-for="tab in financialTabs" :key="tab.id" @click="activeTab = tab.id" 
-                                    :class="[
-                                        'w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
-                                        activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                    ]">
-                                    {{ tab.label }}
-                                </button>
-                            </div>
-                        </div>
-
-                    </div>
-                </aside>
-
-                <!-- Content -->
-                <main class="flex-1">
+    <AppLayout title="System Settings">
+        <template #sidebar>
+            <SettingsSidebar v-model:activeTab="activeTab" />
+        </template>
                     
                     <!-- Store Profile Tab -->
                     <div v-if="activeTab === 'storeProfile'" class="dashboard-card p-8">
@@ -610,13 +452,10 @@ const submitPosSettings = () => {
                             </span>
                         </template>
                     </DataTable>
-                </main>
-            </div>
-        </div>
-    </div>
 
-    <!-- Modal Form (Locations) -->
-    <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <template #modals>
+            <!-- Modal Form (Locations) -->
+            <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
         <div class="dashboard-card w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
             <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">
                 {{ editingItem ? 'Edit' : 'Create' }} {{ (geographicTabs.concat(restaurantTabs).concat(financialTabs)).find(t => t.id === activeTab)?.label.slice(0, -1) }}
@@ -716,4 +555,6 @@ const submitPosSettings = () => {
             </form>
         </div>
     </div>
+        </template>
+    </AppLayout>
 </template>

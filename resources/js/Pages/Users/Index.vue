@@ -1,6 +1,8 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { useForm, router, usePage } from '@inertiajs/vue3';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import UsersSidebar from '@/Components/UsersSidebar.vue';
 import DataTable from '@/Components/DataTable.vue';
 import SelectInput from '@/Components/SelectInput.vue';
 
@@ -9,38 +11,19 @@ const props = defineProps({
     branches: Array,
 });
 
-// Theme logic
-const isDark = ref(false);
-const toggleTheme = () => {
-    isDark.value = !isDark.value;
-    if (isDark.value) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-    }
-};
+const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || 'users');
 
-onMounted(() => {
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        isDark.value = true;
-        document.documentElement.classList.add('dark');
-    } else {
-        isDark.value = false;
-        document.documentElement.classList.remove('dark');
+watch(activeTab, (newTab) => {
+    if (newTab && typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', newTab);
+        window.history.replaceState({}, '', url.toString());
     }
 });
-
-const activeTab = ref('users');
 
 const tabs = [
     { id: 'users', label: 'Users' },
 ];
-
-const expandedCategories = ref({
-    staff: true,
-});
 
 const columns = computed(() => {
     return [
@@ -141,149 +124,96 @@ const deleteItem = (item) => {
 </script>
 
 <template>
-    <Head title="User Management" />
-    <div class="min-h-screen flex flex-col transition-colors duration-300">
-        
-        <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6 pb-20">
-            <!-- Header -->
-            <header class="dashboard-card px-6 py-4 flex justify-between items-center mb-6">
-                <div class="flex items-center gap-4">
-                    <h1 class="text-xl font-semibold text-indigo-500 dark:text-[#06b6d4]">User Management</h1>
-                    <div class="hidden md:flex items-center gap-3 ml-4 border-l pl-4 border-slate-200 dark:border-slate-700">
-                        <Link :href="route('dashboard')" class="text-sm font-bold text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-[#06b6d4] transition-colors flex items-center gap-1">
-                            &larr; Back to Dashboard
-                        </Link>
-                    </div>
-                </div>
-                
-                <button @click="toggleTheme" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                    <svg v-if="!isDark" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#06b6d4]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </button>
-            </header>
+    <AppLayout title="User Management">
+        <template #sidebar>
+            <UsersSidebar v-model:activeTab="activeTab" />
+        </template>
 
-            <div class="flex flex-col md:flex-row gap-6">
-                <!-- Sidebar Tabs -->
-                <aside class="w-full md:w-64 shrink-0">
-                    <div class="dashboard-card p-4 space-y-6">
-                        
-                        <div>
-                            <button type="button" class="w-full flex justify-between items-center text-xs font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-2 px-2 focus:outline-none cursor-default">
-                                <span>Staff & Security</span>
-                            </button>
-                            <div v-show="expandedCategories.staff" class="space-y-1">
-                                <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" 
-                                    :class="[
-                                        'w-full text-left px-4 py-2.5 rounded-xl transition-colors text-sm font-bold',
-                                        activeTab === tab.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-[#06b6d4]' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                    ]">
-                                    {{ tab.label }}
-                                </button>
+        <DataTable :title="tabs.find(t => t.id === activeTab)?.label || 'Users'" :columns="columns" :data="props.users" @edit="openModal" @delete="deleteItem">
+            <template #actions>
+                <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
+                    + Add New
+                </button>
+            </template>
+            
+            <template #cell-branches="{item}">
+                <div class="flex flex-wrap gap-1">
+                    <span v-for="branch in item.branches" :key="branch.id" class="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-700 rounded-md font-bold text-slate-600 dark:text-slate-300">
+                        {{ branch.name }}
+                    </span>
+                </div>
+            </template>
+            
+            <template #cell-role="{item}">
+                <span class="capitalize text-slate-600 dark:text-slate-300 font-bold text-sm">{{ item.role }}</span>
+            </template>
+        </DataTable>
+
+        <template #modals>
+            <!-- Modal Form -->
+            <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                <div class="dashboard-card w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+                    <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">
+                        {{ editingItem ? 'Edit User' : 'Create User' }}
+                    </h2>
+                    <form @submit.prevent="submitForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="field in formFields" :key="field.key" :class="[field.type === 'textarea' || field.type === 'multiselect' ? 'md:col-span-2' : '']">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ field.label }}</label>
+                                
+                                <template v-if="field.type === 'checkbox'">
+                                    <label class="relative inline-flex items-center cursor-pointer mt-1">
+                                        <input type="checkbox" v-model="form[field.key]" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-500 dark:peer-checked:bg-[#06b6d4]"></div>
+                                    </label>
+                                </template>
+
+                                <template v-else-if="field.type === 'textarea'">
+                                    <textarea v-model="form[field.key]" class="pos-input w-full min-h-[80px]" :required="field.required !== false"></textarea>
+                                </template>
+
+                                <template v-else-if="field.type === 'select'">
+                                    <SelectInput 
+                                        v-model="form[field.key]" 
+                                        :options="field.options" 
+                                        valueKey="value"
+                                        labelKey="label"
+                                        :placeholder="'Select ' + field.label" 
+                                        :searchPlaceholder="'Search ' + field.label.toLowerCase() + '...'"
+                                    />
+                                </template>
+
+                                <template v-else-if="field.type === 'multiselect'">
+                                    <div class="relative z-50">
+                                        <SelectInput 
+                                            v-model="form[field.key]" 
+                                            :options="field.options" 
+                                            valueKey="value"
+                                            labelKey="label"
+                                            :multiple="true"
+                                            :placeholder="'Select ' + field.label" 
+                                            :searchPlaceholder="'Search ' + field.label.toLowerCase() + '...'"
+                                        />
+                                    </div>
+                                </template>
+                                
+                                <template v-else>
+                                    <input :type="field.type" v-model="form[field.key]" class="pos-input w-full" :required="field.required !== false">
+                                </template>
+
+                                <div v-if="form.errors[field.key]" class="text-red-500 text-xs mt-1">{{ form.errors[field.key] }}</div>
                             </div>
                         </div>
-
-                    </div>
-                </aside>
-
-                <!-- Content -->
-                <main class="flex-1">
-                    
-                    <DataTable :title="tabs.find(t => t.id === activeTab)?.label" :columns="columns" :data="props.users" @edit="openModal" @delete="deleteItem">
-                        <template #actions>
-                            <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
-                                + Add New
+                        
+                        <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <button type="button" @click="closeModal" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">Cancel</button>
+                            <button type="submit" class="pos-btn-primary !py-2 !px-4" :disabled="form.processing">
+                                {{ editingItem ? 'Save Changes' : 'Create' }}
                             </button>
-                        </template>
-
-                        <template #cell-is_active="{item}">
-                            <span :class="item.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full text-xs font-bold' : 'bg-slate-100 text-slate-800 dark:bg-slate-700/50 dark:text-slate-400 px-2.5 py-0.5 rounded-full text-xs font-bold'">
-                                {{ item.is_active ? 'Active' : 'Inactive' }}
-                            </span>
-                        </template>
-                        
-                        <template #cell-branches="{item}">
-                            <div class="flex flex-wrap gap-1">
-                                <span v-for="branch in item.branches" :key="branch.id" class="px-2 py-0.5 text-[10px] bg-slate-100 dark:bg-slate-700 rounded-md font-bold text-slate-600 dark:text-slate-300">
-                                    {{ branch.name }}
-                                </span>
-                            </div>
-                        </template>
-                        
-                        <template #cell-role="{item}">
-                            <span class="capitalize text-slate-600 dark:text-slate-300 font-bold text-sm">{{ item.role }}</span>
-                        </template>
-                    </DataTable>
-                </main>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal Form -->
-    <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="dashboard-card w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">
-                {{ editingItem ? 'Edit User' : 'Create User' }}
-            </h2>
-            <form @submit.prevent="submitForm" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div v-for="field in formFields" :key="field.key" :class="[field.type === 'textarea' || field.type === 'multiselect' ? 'md:col-span-2' : '']">
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ field.label }}</label>
-                        
-                        <template v-if="field.type === 'checkbox'">
-                            <label class="relative inline-flex items-center cursor-pointer mt-1">
-                                <input type="checkbox" v-model="form[field.key]" class="sr-only peer">
-                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-500 dark:peer-checked:bg-[#06b6d4]"></div>
-                            </label>
-                        </template>
-
-                        <template v-else-if="field.type === 'textarea'">
-                            <textarea v-model="form[field.key]" class="pos-input w-full min-h-[80px]" :required="field.required !== false"></textarea>
-                        </template>
-
-                        <template v-else-if="field.type === 'select'">
-                            <SelectInput 
-                                v-model="form[field.key]" 
-                                :options="field.options" 
-                                valueKey="value"
-                                labelKey="label"
-                                :placeholder="'Select ' + field.label" 
-                                :searchPlaceholder="'Search ' + field.label.toLowerCase() + '...'"
-                            />
-                        </template>
-
-                        <template v-else-if="field.type === 'multiselect'">
-                            <div class="relative z-50">
-                                <SelectInput 
-                                    v-model="form[field.key]" 
-                                    :options="field.options" 
-                                    valueKey="value"
-                                    labelKey="label"
-                                    :multiple="true"
-                                    :placeholder="'Select ' + field.label" 
-                                    :searchPlaceholder="'Search ' + field.label.toLowerCase() + '...'"
-                                />
-                            </div>
-                        </template>
-                        
-                        <template v-else>
-                            <input :type="field.type" v-model="form[field.key]" class="pos-input w-full" :required="field.required !== false">
-                        </template>
-
-                        <div v-if="form.errors[field.key]" class="text-red-500 text-xs mt-1">{{ form.errors[field.key] }}</div>
-                    </div>
-                </div>
-                
-                <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <button type="button" @click="closeModal" class="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">Cancel</button>
-                    <button type="submit" class="pos-btn-primary !py-2 !px-4" :disabled="form.processing">
-                        {{ editingItem ? 'Save Changes' : 'Create' }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+        </template>
+    </AppLayout>
 </template>
