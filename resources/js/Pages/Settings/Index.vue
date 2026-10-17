@@ -16,6 +16,14 @@ const props = defineProps({
     tables: Array,
     settings: Object,
     paymentTypes: Array,
+    orderTypes: {
+        type: Array,
+        default: () => [],
+    },
+    parties: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || 'storeProfile');
@@ -39,6 +47,8 @@ const restaurantTabs = [
     { id: 'branches', label: 'Branches' },
     { id: 'floors', label: 'Floors' },
     { id: 'tables', label: 'Tables' },
+    { id: 'orderTypes', label: 'Order Types' },
+    { id: 'parties', label: 'Parties (POS)' },
 ];
 
 const settingTabs = [
@@ -50,6 +60,12 @@ const financialTabs = [
     { id: 'paymentTypes', label: 'Payment Types' },
 ];
 
+const currentTabLabel = computed(() => {
+    const all = geographicTabs.concat(restaurantTabs).concat(financialTabs);
+    const found = all.find(t => t.id === activeTab.value);
+    return found ? found.label : 'Item';
+});
+
 const tabData = computed(() => {
     switch (activeTab.value) {
         case 'countries': return props.countries;
@@ -60,6 +76,8 @@ const tabData = computed(() => {
         case 'floors': return props.floors;
         case 'tables': return props.tables;
         case 'paymentTypes': return props.paymentTypes;
+        case 'orderTypes': return props.orderTypes;
+        case 'parties': return props.parties;
         default: return [];
     }
 });
@@ -111,6 +129,24 @@ const columns = computed(() => {
         case 'paymentTypes': return [
             { key: 'id', label: 'ID' },
             { key: 'name', label: 'Name' },
+            { key: 'is_active', label: 'Active' },
+        ];
+        case 'orderTypes': return [
+            { key: 'id', label: 'ID' },
+            { key: 'name', label: 'Name' },
+            { key: 'code', label: 'Code' },
+            { key: 'service_charge_percent', label: 'Service Charge (%)' },
+            { key: 'is_active', label: 'Active' },
+        ];
+        case 'parties': return [
+            { key: 'id', label: 'ID' },
+            { key: 'name', label: 'Party Name' },
+            { key: 'party_type', label: 'Type' },
+            { key: 'order_types', label: 'Linked Order Types (POS)' },
+            { key: 'payment_types', label: 'Payment Methods' },
+            { key: 'phone', label: 'Phone' },
+            { key: 'city_id', label: 'City' },
+            { key: 'credit_limit', label: 'Credit Limit' },
             { key: 'is_active', label: 'Active' },
         ];
         default: return [];
@@ -195,6 +231,63 @@ const formFields = computed(() => {
             { key: 'name', label: 'Payment Method Name', type: 'text' },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
         ];
+        case 'orderTypes': return [
+            { key: 'name', label: 'Order Type Name', type: 'text' },
+            { key: 'code', label: 'Code (e.g. dine_in, delivery)', type: 'text', required: false },
+            { key: 'service_charge_percent', label: 'Service Charge (%)', type: 'number', step: '0.01', required: false },
+            { key: 'notes', label: 'Notes', type: 'textarea', required: false },
+            { key: 'is_active', label: 'Active', type: 'checkbox' },
+        ];
+        case 'parties': return [
+            { key: 'name', label: 'Party / Company Name', type: 'text' },
+            { 
+                key: 'party_type', 
+                label: 'Party Type', 
+                type: 'select', 
+                options: [
+                    { value: 'delivery_partner', label: 'Delivery Partner / Aggregator (e.g. Foodpanda, Careem)' },
+                    { value: 'corporate', label: 'Corporate / B2B Client' },
+                    { value: 'customer', label: 'Customer' },
+                    { value: 'vendor', label: 'Vendor' },
+                    { value: 'supplier', label: 'Supplier' },
+                    { value: 'other', label: 'Other' },
+                ] 
+            },
+            {
+                key: 'order_type_ids',
+                label: 'Linked Order Types (POS)',
+                type: 'select',
+                multiple: true,
+                placeholder: 'Select linked order types...',
+                options: (props.orderTypes || []).map(ot => ({ value: ot.id, label: ot.name })),
+                required: false,
+            },
+            {
+                key: 'payment_type_ids',
+                label: 'Accepted Payment Methods / Types (POS)',
+                type: 'select',
+                multiple: true,
+                placeholder: 'Select accepted payment methods...',
+                options: (props.paymentTypes || []).map(pt => ({ value: pt.id, label: pt.name })),
+                required: false,
+            },
+            { key: 'contact_person', label: 'Contact Person', type: 'text', required: false },
+            { key: 'phone', label: 'Phone', type: 'text', required: false },
+            { key: 'email', label: 'Email', type: 'email', required: false },
+            { key: 'tax_number', label: 'Tax / NTN Number', type: 'text', required: false },
+            { 
+                key: 'city_id', 
+                label: 'City', 
+                type: 'select', 
+                options: (props.cities || []).map(p => ({ value: p.id, label: p.name + (p.province ? ' (' + p.province.name + ')' : '') })),
+                required: false,
+            },
+            { key: 'credit_limit', label: 'Credit Limit', type: 'number', step: '0.01', required: false },
+            { key: 'opening_balance', label: 'Opening Balance', type: 'number', step: '0.01', required: false },
+            { key: 'address', label: 'Address', type: 'text', required: false },
+            { key: 'notes', label: 'Notes', type: 'textarea', required: false },
+            { key: 'is_active', label: 'Active', type: 'checkbox' },
+        ];
         default: return [];
     }
 });
@@ -203,7 +296,13 @@ const openModal = (item = null) => {
     editingItem.value = item;
     const initialData = {};
     formFields.value.forEach(field => {
-        if (field.type === 'checkbox') {
+        if (field.key === 'order_type_ids') {
+            initialData[field.key] = item && item.order_types ? item.order_types.map(ot => ot.id) : [];
+        } else if (field.key === 'payment_type_ids') {
+            initialData[field.key] = item && item.payment_types ? item.payment_types.map(pt => pt.id) : [];
+        } else if (field.key === 'party_type') {
+            initialData[field.key] = item ? (item.party_type || 'delivery_partner') : 'delivery_partner';
+        } else if (field.type === 'checkbox') {
             initialData[field.key] = item ? !!item[field.key] : true;
         } else if (field.virtual || field.key.endsWith('_id')) {
             if (item) {
@@ -231,7 +330,7 @@ const openModal = (item = null) => {
                 initialData[field.key] = field.key === 'capacity' ? 4 : '';
             }
         } else {
-            initialData[field.key] = item ? item[field.key] : (field.key === 'capacity' ? 4 : '');
+            initialData[field.key] = item ? item[field.key] : (field.key === 'capacity' ? 4 : (field.key === 'credit_limit' || field.key === 'opening_balance' || field.key === 'service_charge_percent' ? 0 : ''));
         }
     });
 
@@ -267,6 +366,8 @@ const getRouteGroupAndPrefix = () => {
         case 'floors': return { group: 'restaurant', prefix: 'floors' };
         case 'tables': return { group: 'restaurant', prefix: 'tables' };
         case 'paymentTypes': return { group: 'restaurant', prefix: 'payment-types' };
+        case 'orderTypes': return { group: 'restaurant', prefix: 'order-types' };
+        case 'parties': return { group: 'restaurant', prefix: 'parties' };
     }
 };
 
@@ -414,7 +515,7 @@ const submitPosSettings = () => {
                     </div>
 
                     <!-- Location & Restaurant DataTables -->
-                    <DataTable v-else :title="(geographicTabs.concat(restaurantTabs).concat(financialTabs)).find(t => t.id === activeTab)?.label" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
+                    <DataTable v-else :title="currentTabLabel" :columns="columns" :data="tabData" @edit="openModal" @delete="deleteItem">
                         <template #actions>
                             <button @click="openModal()" class="pos-btn-primary !py-2 !px-4 !rounded-lg text-sm">
                                 + Add New
@@ -446,6 +547,48 @@ const submitPosSettings = () => {
                         <template #cell-floor_id="{item}">
                             {{ item.floor?.name || item.floor_id }}
                         </template>
+                        <template #cell-service_charge_percent="{item}">
+                            {{ item.service_charge_percent !== null && item.service_charge_percent !== undefined ? Number(item.service_charge_percent) + '%' : '0%' }}
+                        </template>
+                        <template #cell-credit_limit="{item}">
+                            ${{ Number(item.credit_limit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }) }}
+                        </template>
+                        <template #cell-party_type="{item}">
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                                {{ (item.party_type || '—').replace('_', ' ') }}
+                            </span>
+                        </template>
+                        <template #cell-order_types="{item}">
+                            <div class="flex flex-wrap gap-1 max-w-xs">
+                                <span 
+                                    v-for="ot in item.order_types" 
+                                    :key="ot.id" 
+                                    class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-cyan-300 border border-indigo-200/60 dark:border-indigo-900/40"
+                                >
+                                    {{ ot.name }}
+                                </span>
+                                <span v-if="!item.order_types || item.order_types.length === 0" class="text-xs text-slate-400 italic">
+                                    All Types
+                                </span>
+                            </div>
+                        </template>
+                        <template #cell-payment_types="{item}">
+                            <div class="flex flex-wrap gap-1 max-w-xs">
+                                <span 
+                                    v-for="pt in item.payment_types" 
+                                    :key="pt.id" 
+                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                    {{ pt.name }}
+                                </span>
+                                <span v-if="!item.payment_types || item.payment_types.length === 0" class="text-xs text-slate-400 italic">
+                                    All / None
+                                </span>
+                            </div>
+                        </template>
                         <template #cell-is_active="{item}">
                             <span :class="item.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full text-xs font-bold' : 'bg-slate-100 text-slate-800 dark:bg-slate-700/50 dark:text-slate-400 px-2.5 py-0.5 rounded-full text-xs font-bold'">
                                 {{ item.is_active ? 'Active' : 'Inactive' }}
@@ -458,11 +601,11 @@ const submitPosSettings = () => {
             <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
         <div class="dashboard-card w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
             <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">
-                {{ editingItem ? 'Edit' : 'Create' }} {{ (geographicTabs.concat(restaurantTabs).concat(financialTabs)).find(t => t.id === activeTab)?.label.slice(0, -1) }}
+                {{ editingItem ? 'Edit' : 'Create' }} {{ currentTabLabel }}
             </h2>
             <form @submit.prevent="submitForm" class="flex flex-col">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div v-for="field in formFields" :key="field.key" :class="{'md:col-span-2': field.type === 'textarea'}">
+                    <div v-for="field in formFields" :key="field.key" :class="{'md:col-span-2': field.type === 'textarea' || field.multiple}">
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ field.label }}</label>
                     
                     <template v-if="field.type === 'checkbox'">
@@ -476,16 +619,21 @@ const submitPosSettings = () => {
                         <SelectInput 
                             v-model="form[field.key]" 
                             :options="field.dynamicOptions ? field.dynamicOptions(form) : field.options" 
+                            :multiple="!!field.multiple"
                             valueKey="value"
                             labelKey="label"
-                            placeholder="Select an option" 
+                            :placeholder="field.placeholder || (field.multiple ? 'Select options...' : 'Select an option')" 
                             searchPlaceholder="Search option..."
                             :disabled="!field.virtual && (field.dynamicOptions ? field.dynamicOptions(form).length === 0 : field.options.length === 0)"
                         />
                     </template>
                     
+                    <template v-else-if="field.type === 'textarea'">
+                        <textarea v-model="form[field.key]" rows="2" class="pos-input w-full" :required="field.required !== false"></textarea>
+                    </template>
+
                     <template v-else>
-                        <input :type="field.type" v-model="form[field.key]" class="pos-input w-full" :required="field.required !== false">
+                        <input :type="field.type" :step="field.step" v-model="form[field.key]" class="pos-input w-full" :required="field.required !== false">
                     </template>
 
                     <div v-if="form.errors[field.key]" class="text-red-500 text-xs mt-1">{{ form.errors[field.key] }}</div>

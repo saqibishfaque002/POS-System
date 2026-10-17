@@ -31,4 +31,9 @@ class OrderType extends Model
     {
         return $this->belongsToMany(RecipeIngredient::class);
     }
+
+    public function parties()
+    {
+        return $this->belongsToMany(Party::class, 'order_type_party');
+    }
 }

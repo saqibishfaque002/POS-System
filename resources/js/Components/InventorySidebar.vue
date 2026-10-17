@@ -18,7 +18,6 @@ const expandedCategories = ref({
     catalog: false,
     ingredients: false,
     purchase: false,
-    masters: false,
 });
 
 // Category definitions with modern iconography and metadata
@@ -41,15 +40,8 @@ const categories = [
         id: 'purchase',
         label: 'Manage Purchase',
         shortLabel: 'Trade',
-        itemCount: 8,
+        itemCount: 9,
         icon: 'shopping-cart',
-    },
-    {
-        id: 'masters',
-        label: 'Master Forms',
-        shortLabel: 'Masters',
-        itemCount: 3,
-        icon: 'briefcase',
     }
 ];
 
@@ -75,6 +67,7 @@ const ingredientItems = [
 // Purchase / Trade items
 const tradeItems = [
     { id: 'suppliers', label: 'Suppliers', route: 'trade.suppliers.index', routePattern: 'trade.suppliers.*', type: 'route', icon: 'building' },
+    { id: 'customers', label: 'Customers', route: 'trade.customers.index', routePattern: 'trade.customers.*', type: 'route', icon: 'users' },
     { id: 'purchaseRequests', label: 'Purchase Request', route: 'trade.purchase-requests.index', routePattern: 'trade.purchase-requests.*', type: 'route', icon: 'document-text' },
     { id: 'purchaseOrders', label: 'Purchase Order', route: 'trade.purchase-orders.index', routePattern: 'trade.purchase-orders.*', type: 'route', icon: 'shopping-bag' },
     { id: 'goodReceivedNotes', label: 'Good Received Note', route: 'trade.good-received-notes.index', routePattern: 'trade.good-received-notes.*', type: 'route', icon: 'inbox' },
@@ -82,13 +75,6 @@ const tradeItems = [
     { id: 'purchaseReturns', label: 'Purchase Return', route: 'trade.purchase-returns.index', routePattern: 'trade.purchase-returns.*', type: 'route', icon: 'arrow-uturn' },
     { id: 'saleInvoices', label: 'Sale Invoice', route: 'trade.sale-invoices.index', routePattern: 'trade.sale-invoices.*', type: 'route', icon: 'banknotes' },
     { id: 'saleReturns', label: 'Sale Return', route: 'trade.sale-returns.index', routePattern: 'trade.sale-returns.*', type: 'route', icon: 'arrow-path' },
-];
-
-// Master Forms items
-const masterItems = [
-    { id: 'customers', label: 'Customers', route: 'masters.customers.index', routePattern: 'masters.customers.*', type: 'route', icon: 'users' },
-    { id: 'parties', label: 'Parties & Accounts', route: 'masters.parties.index', routePattern: 'masters.parties.*', type: 'route', icon: 'building' },
-    { id: 'orderTypes', label: 'Order Types', route: 'masters.order-types.index', routePattern: 'masters.order-types.*', type: 'route', icon: 'tag' },
 ];
 
 // Search filter state for sidebar items
@@ -113,22 +99,13 @@ const filteredTradeItems = computed(() => {
     return tradeItems.filter(item => item.label.toLowerCase().includes(q));
 });
 
-const filteredMasterItems = computed(() => {
-    if (!isSearching.value) return masterItems;
-    const q = searchQuery.value.toLowerCase().trim();
-    return masterItems.filter(item => item.label.toLowerCase().includes(q));
-});
-
 const totalMatches = computed(() => {
-    return filteredCatalogItems.value.length + filteredIngredientItems.value.length + filteredTradeItems.value.length + filteredMasterItems.value.length;
+    return filteredCatalogItems.value.length + filteredIngredientItems.value.length + filteredTradeItems.value.length;
 });
 
 // Detect current active section dynamically from current route
 const detectActiveCategory = () => {
     try {
-        if (route().current('masters.*')) {
-            return 'masters';
-        }
         if (route().current('trade.*')) {
             return 'purchase';
         }
@@ -521,64 +498,6 @@ onMounted(() => {
                     <div v-show="isSearching || expandedCategories.purchase" class="space-y-1 pt-1.5 pb-1">
                         <Link
                             v-for="item in filteredTradeItems"
-                            :key="item.id"
-                            :href="route(item.route)"
-                            :class="[
-                                'group flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-bold transition-all duration-150 relative text-left',
-                                isItemActive(item)
-                                    ? 'bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-600 dark:text-[#06b6d4] shadow-xs'
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                            ]"
-                        >
-                            <span v-if="isItemActive(item)" class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-indigo-600 dark:bg-[#06b6d4] rounded-r-full"></span>
-                            <div class="flex items-center gap-2.5">
-                                <span class="w-1.5 h-1.5 rounded-full transition-colors"
-                                      :class="isItemActive(item) ? 'bg-indigo-600 dark:bg-[#06b6d4]' : 'bg-slate-300 dark:bg-slate-700 group-hover:bg-slate-400'"></span>
-                                <span>{{ item.label }}</span>
-                            </div>
-                        </Link>
-                    </div>
-                </div>
-
-                <!-- 4. Master Forms (Customers, Parties, Order Types) -->
-                <div v-show="!isSearching || filteredMasterItems.length > 0" class="rounded-xl border border-transparent transition-colors">
-                    <button 
-                        @click="toggleCategory('masters')" 
-                        type="button" 
-                        class="w-full group flex justify-between items-center px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 focus:outline-none"
-                        :class="[
-                            activeCategory === 'masters'
-                                ? 'text-indigo-600 dark:text-[#06b6d4] bg-indigo-50/50 dark:bg-indigo-950/20'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                        ]"
-                    >
-                        <div class="flex items-center gap-2">
-                            <div class="p-1 rounded-md transition-colors"
-                                 :class="activeCategory === 'masters' ? 'bg-indigo-100/70 dark:bg-cyan-900/40 text-indigo-600 dark:text-[#06b6d4]' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-[#06b6d4]'">
-                                <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                </svg>
-                            </div>
-                            <span class="text-[11px] font-black">Masters</span>
-                        </div>
-
-                        <div class="flex items-center gap-1.5">
-                            <span v-if="activeCategory === 'masters'" class="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-cyan-400"></span>
-                            <span class="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{{ isSearching ? filteredMasterItems.length : masterItems.length }}</span>
-                            <svg 
-                                :class="{'rotate-180': isSearching || expandedCategories.masters}" 
-                                class="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200" 
-                                viewBox="0 0 20 20" 
-                                fill="currentColor"
-                            >
-                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                    </button>
-
-                    <div v-show="isSearching || expandedCategories.masters" class="space-y-1 pt-1.5 pb-1">
-                        <Link
-                            v-for="item in filteredMasterItems"
                             :key="item.id"
                             :href="route(item.route)"
                             :class="[

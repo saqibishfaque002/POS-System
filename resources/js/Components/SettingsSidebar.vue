@@ -49,6 +49,8 @@ const categories = [
             { id: 'branches', label: 'Branches', icon: 'storefront' },
             { id: 'floors', label: 'Floors', icon: 'layers' },
             { id: 'tables', label: 'Tables', icon: 'table' },
+            { id: 'orderTypes', label: 'Order Types', icon: 'tag' },
+            { id: 'parties', label: 'Parties (POS)', icon: 'users' },
         ]
     },
     {

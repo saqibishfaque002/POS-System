@@ -20,4 +20,9 @@ class PaymentType extends Model
                     ->withPivot('tax_percentage')
                     ->withTimestamps();
     }
+
+    public function parties()
+    {
+        return $this->belongsToMany(Party::class, 'party_payment_type');
+    }
 }

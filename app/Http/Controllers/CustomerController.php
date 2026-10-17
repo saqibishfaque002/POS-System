@@ -14,7 +14,7 @@ class CustomerController extends Controller
         $customers = Customer::with('city.province')->latest('id')->get();
         $cities = City::with('province')->orderBy('name')->get();
 
-        return Inertia::render('Masters/Customers/Index', [
+        return Inertia::render('Trade/Customers/Index', [
             'customers' => $customers,
             'cities' => $cities,
         ]);

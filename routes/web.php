@@ -142,6 +142,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/payment-types', [\App\Http\Controllers\RestaurantSetupController::class, 'storePaymentType'])->name('payment-types.store');
             Route::put('/payment-types/{paymentType}', [\App\Http\Controllers\RestaurantSetupController::class, 'updatePaymentType'])->name('payment-types.update');
             Route::delete('/payment-types/{paymentType}', [\App\Http\Controllers\RestaurantSetupController::class, 'destroyPaymentType'])->name('payment-types.destroy');
+
+            // Order Types (Restaurant Fulfillment Master)
+            Route::post('/order-types', [\App\Http\Controllers\OrderTypeController::class, 'store'])->name('order-types.store');
+            Route::put('/order-types/{orderType}', [\App\Http\Controllers\OrderTypeController::class, 'update'])->name('order-types.update');
+            Route::delete('/order-types/{orderType}', [\App\Http\Controllers\OrderTypeController::class, 'destroy'])->name('order-types.destroy');
+
+            // Parties & Accounts (Financial Master)
+            Route::post('/parties', [\App\Http\Controllers\PartyController::class, 'store'])->name('parties.store');
+            Route::put('/parties/{party}', [\App\Http\Controllers\PartyController::class, 'update'])->name('parties.update');
+            Route::delete('/parties/{party}', [\App\Http\Controllers\PartyController::class, 'destroy'])->name('parties.destroy');
         });
     });
 
@@ -182,6 +192,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/sale-returns/{sale_return}/print', [\App\Http\Controllers\SaleReturnController::class, 'print'])->name('sale-returns.print');
         
         Route::resource('suppliers', \App\Http\Controllers\SupplierController::class)->except(['create', 'show', 'edit']);
+        Route::resource('customers', \App\Http\Controllers\CustomerController::class)->except(['create', 'show', 'edit']);
     });
 
     // Production Module
@@ -191,13 +202,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{production}', [\App\Http\Controllers\ProductionController::class, 'update'])->name('update');
         Route::delete('/{production}', [\App\Http\Controllers\ProductionController::class, 'destroy'])->name('destroy');
         Route::patch('/{production}/status', [\App\Http\Controllers\ProductionController::class, 'updateStatus'])->name('status');
-    });
-
-    // Master Forms
-    Route::prefix('masters')->name('masters.')->group(function () {
-        Route::resource('order-types', \App\Http\Controllers\OrderTypeController::class)->except(['create', 'show', 'edit']);
-        Route::resource('customers', \App\Http\Controllers\CustomerController::class)->except(['create', 'show', 'edit']);
-        Route::resource('parties', \App\Http\Controllers\PartyController::class)->except(['create', 'show', 'edit']);
     });
 });
 

@@ -20,3 +20,4 @@ yarn-error.log
 /storage/
 /.agents
 /test*
+/*.md

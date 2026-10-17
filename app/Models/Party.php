@@ -18,6 +18,7 @@ class Party extends Model
         'tax_number',
         'address',
         'city_id',
+        'payment_type_id',
         'credit_limit',
         'opening_balance',
         'is_active',
@@ -35,8 +36,23 @@ class Party extends Model
         return $this->belongsTo(City::class);
     }
 
+    public function paymentType()
+    {
+        return $this->belongsTo(PaymentType::class);
+    }
+
+    public function paymentTypes()
+    {
+        return $this->belongsToMany(PaymentType::class, 'party_payment_type');
+    }
+
     public function posOrders()
     {
         return $this->hasMany(PosOrder::class);
+    }
+
+    public function orderTypes()
+    {
+        return $this->belongsToMany(OrderType::class, 'order_type_party');
     }
 }

@@ -22,14 +22,44 @@ class PartyController extends Controller
 
     public function store(PartyRequest $request)
     {
-        Party::create($request->validated());
+        $validated = $request->validated();
+        if (empty($validated['party_type'])) {
+            $validated['party_type'] = 'delivery_partner';
+        }
+        $orderTypeIds = $validated['order_type_ids'] ?? [];
+        $paymentTypeIds = $validated['payment_type_ids'] ?? [];
+        unset($validated['order_type_ids'], $validated['payment_type_ids']);
+
+        $party = Party::create($validated);
+
+        if ($request->has('order_type_ids')) {
+            $party->orderTypes()->sync($orderTypeIds);
+        }
+        if ($request->has('payment_type_ids')) {
+            $party->paymentTypes()->sync($paymentTypeIds);
+        }
 
         return back()->with('success', 'Party created successfully.');
     }
 
     public function update(PartyRequest $request, Party $party)
     {
-        $party->update($request->validated());
+        $validated = $request->validated();
+        if (empty($validated['party_type'])) {
+            $validated['party_type'] = 'delivery_partner';
+        }
+        $orderTypeIds = $validated['order_type_ids'] ?? [];
+        $paymentTypeIds = $validated['payment_type_ids'] ?? [];
+        unset($validated['order_type_ids'], $validated['payment_type_ids']);
+
+        $party->update($validated);
+
+        if ($request->has('order_type_ids')) {
+            $party->orderTypes()->sync($orderTypeIds);
+        }
+        if ($request->has('payment_type_ids')) {
+            $party->paymentTypes()->sync($paymentTypeIds);
+        }
 
         return back()->with('success', 'Party updated successfully.');
     }
@@ -42,6 +72,8 @@ class PartyController extends Controller
             return back()->with('error', 'Cannot delete this party as it is linked to POS orders.');
         }
 
+        $party->orderTypes()->detach();
+        $party->paymentTypes()->detach();
         $party->delete();
 
         return back()->with('success', 'Party deleted successfully.');

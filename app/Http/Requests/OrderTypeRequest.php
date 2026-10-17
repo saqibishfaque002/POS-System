@@ -14,7 +14,7 @@ class OrderTypeRequest extends FormRequest
 
     public function rules(): array
     {
-        $orderTypeId = $this->route('order_type')?->id ?? $this->route('order_type');
+        $orderTypeId = $this->route('order_type')?->id ?? $this->route('order_type') ?? $this->route('orderType')?->id ?? $this->route('orderType');
 
         return [
             'name' => [

@@ -40,6 +40,8 @@ class SettingController extends Controller
                 })->orderBy('name')->get(),
             'settings' => Setting::pluck('value', 'key')->toArray(),
             'paymentTypes' => \App\Models\PaymentType::orderBy('name')->get(),
+            'orderTypes' => \App\Models\OrderType::orderBy('name')->get(),
+            'parties' => \App\Models\Party::with(['city', 'orderTypes', 'paymentTypes'])->orderBy('name')->get(),
         ]);
     }
 
