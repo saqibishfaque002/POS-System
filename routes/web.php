@@ -192,6 +192,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{production}', [\App\Http\Controllers\ProductionController::class, 'destroy'])->name('destroy');
         Route::patch('/{production}/status', [\App\Http\Controllers\ProductionController::class, 'updateStatus'])->name('status');
     });
+
+    // Master Forms
+    Route::prefix('masters')->name('masters.')->group(function () {
+        Route::resource('order-types', \App\Http\Controllers\OrderTypeController::class)->except(['create', 'show', 'edit']);
+        Route::resource('customers', \App\Http\Controllers\CustomerController::class)->except(['create', 'show', 'edit']);
+        Route::resource('parties', \App\Http\Controllers\PartyController::class)->except(['create', 'show', 'edit']);
+    });
 });
 
 Route::get('/', function () {
