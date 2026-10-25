@@ -27,4 +27,9 @@ class FoodItemVariation extends Model
     {
         return $this->belongsTo(Variation::class);
     }
+
+    public function recipe()
+    {
+        return $this->morphOne(Recipe::class, 'recipeable');
+    }
 }

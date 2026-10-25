@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             IngredientUnitSeeder::class,
             IngredientItemSeeder::class,
             PaymentTypeSeeder::class,
+            PosWorkflowSeeder::class,
         ]);
     }
 }

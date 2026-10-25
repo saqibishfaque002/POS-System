@@ -30,7 +30,7 @@ const activeTabLabel = computed(() => {
 
 <template>
     <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="dashboard-card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <div class="dashboard-card w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <h2 class="text-xl font-bold mb-6 text-slate-800 dark:text-white">
                 {{ editingItem ? 'Edit' : 'Create' }} {{ activeTabLabel }}
             </h2>
@@ -49,9 +49,10 @@ const activeTabLabel = computed(() => {
                         <SelectInput 
                             v-model="form[field.key]" 
                             :options="field.options" 
+                            :multiple="!!field.multiple"
                             valueKey="value"
                             labelKey="label"
-                            placeholder="Select an option" 
+                            :placeholder="field.placeholder || (field.multiple ? 'Select options...' : 'Select an option')" 
                             searchPlaceholder="Search option..."
                         />
                     </template>

@@ -10,6 +10,12 @@ class Branch extends Model
     use HasFactory;
     protected $guarded = [];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+        'delivery_charges' => 'decimal:2',
+        'service_charge_value' => 'decimal:2',
+    ];
+
     public function company() {
         return $this->belongsTo(Company::class);
     }

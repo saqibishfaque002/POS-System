@@ -19,11 +19,30 @@ use Inertia\Inertia;
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/pos', function () {
-        return Inertia::render('Pos/Index', [
-            'products' => Product::all()
-        ]);
-    })->name('pos.index');
+    // POS Terminal Routes
+    Route::get('/pos', [\App\Http\Controllers\POSTerminalController::class, 'index'])->name('pos.index');
+    Route::prefix('pos')->name('pos.')->group(function () {
+        Route::get('/bootstrap', [\App\Http\Controllers\POSTerminalController::class, 'bootstrap'])->name('bootstrap');
+        Route::get('/items', [\App\Http\Controllers\POSTerminalController::class, 'getItems'])->name('items');
+        Route::get('/orders/submitted', [\App\Http\Controllers\POSTerminalController::class, 'getSubmittedOrders'])->name('orders.submitted');
+        Route::get('/orders/settled', [\App\Http\Controllers\POSTerminalController::class, 'getSettledOrders'])->name('orders.settled');
+        Route::post('/orders', [\App\Http\Controllers\POSTerminalController::class, 'storeOrder'])->name('orders.store');
+        Route::post('/orders/{order}/settle', [\App\Http\Controllers\POSTerminalController::class, 'settlePayment'])->name('orders.settle');
+        Route::post('/orders/{order}/foc', [\App\Http\Controllers\POSTerminalController::class, 'focOrder'])->name('orders.foc');
+        Route::post('/orders/{order}/kot', [\App\Http\Controllers\POSTerminalController::class, 'printKot'])->name('orders.kot');
+        Route::post('/orders/{order}/void', [\App\Http\Controllers\POSTerminalController::class, 'voidOrder'])->name('orders.void');
+        Route::post('/customers/quick', [\App\Http\Controllers\POSTerminalController::class, 'quickStoreCustomer'])->name('customers.quick');
+
+        // Business Day & Shift Management
+        Route::get('/shifts/status', [\App\Http\Controllers\POSTerminalController::class, 'getShiftStatus'])->name('shifts.status');
+        Route::post('/business-day/open', [\App\Http\Controllers\POSTerminalController::class, 'openBusinessDay'])->name('business-day.open');
+        Route::post('/business-day/close', [\App\Http\Controllers\POSTerminalController::class, 'closeBusinessDay'])->name('business-day.close');
+        Route::post('/shifts/start', [\App\Http\Controllers\POSTerminalController::class, 'startShift'])->name('shifts.start');
+        Route::post('/shifts/close', [\App\Http\Controllers\POSTerminalController::class, 'closeShift'])->name('shifts.close');
+        Route::get('/shifts/summary', [\App\Http\Controllers\POSTerminalController::class, 'getShiftSummary'])->name('shifts.summary');
+        Route::get('/shifts/monitor', [\App\Http\Controllers\POSTerminalController::class, 'getShiftMonitor'])->name('shifts.monitor');
+        Route::get('/monitor', [\App\Http\Controllers\POSTerminalController::class, 'renderShiftMonitor'])->name('monitor');
+    });
 
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
 
@@ -40,6 +59,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/food-groups/{foodGroup}', [\App\Http\Controllers\CatalogController::class, 'destroyFoodGroup'])->name('food-groups.destroy');
 
         // Food Items
+        Route::get('/food-items/by-branch-and-menu', [\App\Http\Controllers\CatalogController::class, 'getItemsForBranchAndMenu'])->name('food-items.by-branch-and-menu');
         Route::post('/food-items', [\App\Http\Controllers\CatalogController::class, 'storeFoodItem'])->name('food-items.store');
         Route::put('/food-items/{foodItem}', [\App\Http\Controllers\CatalogController::class, 'updateFoodItem'])->name('food-items.update');
         Route::delete('/food-items/{foodItem}', [\App\Http\Controllers\CatalogController::class, 'destroyFoodItem'])->name('food-items.destroy');
@@ -152,6 +172,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/parties', [\App\Http\Controllers\PartyController::class, 'store'])->name('parties.store');
             Route::put('/parties/{party}', [\App\Http\Controllers\PartyController::class, 'update'])->name('parties.update');
             Route::delete('/parties/{party}', [\App\Http\Controllers\PartyController::class, 'destroy'])->name('parties.destroy');
+
+            // Discounts (Promotions & Deals)
+            Route::post('/discounts', [\App\Http\Controllers\DiscountController::class, 'store'])->name('discounts.store');
+            Route::put('/discounts/{discount}', [\App\Http\Controllers\DiscountController::class, 'update'])->name('discounts.update');
+            Route::delete('/discounts/{discount}', [\App\Http\Controllers\DiscountController::class, 'destroy'])->name('discounts.destroy');
+            Route::match(['get', 'post'], '/discounts/available', [\App\Http\Controllers\DiscountController::class, 'getAvailableDiscounts'])->name('discounts.available');
+            Route::post('/discounts/validate-voucher', [\App\Http\Controllers\DiscountController::class, 'validateVoucher'])->name('discounts.validate_voucher');
         });
     });
 

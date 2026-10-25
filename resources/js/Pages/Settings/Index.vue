@@ -24,6 +24,22 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    discounts: {
+        type: Array,
+        default: () => [],
+    },
+    bankDiscounts: {
+        type: Array,
+        default: () => [],
+    },
+    foodGroups: {
+        type: Array,
+        default: () => [],
+    },
+    foodItems: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || 'storeProfile');
@@ -58,6 +74,8 @@ const settingTabs = [
 
 const financialTabs = [
     { id: 'paymentTypes', label: 'Payment Types' },
+    { id: 'discounts', label: 'Discounts & Deals' },
+    { id: 'bankDiscounts', label: 'Bank Card Discounts' },
 ];
 
 const currentTabLabel = computed(() => {
@@ -78,6 +96,8 @@ const tabData = computed(() => {
         case 'paymentTypes': return props.paymentTypes;
         case 'orderTypes': return props.orderTypes;
         case 'parties': return props.parties;
+        case 'discounts': return props.discounts;
+        case 'bankDiscounts': return props.bankDiscounts;
         default: return [];
     }
 });
@@ -148,6 +168,28 @@ const columns = computed(() => {
             { key: 'city_id', label: 'City' },
             { key: 'credit_limit', label: 'Credit Limit' },
             { key: 'is_active', label: 'Active' },
+        ];
+        case 'discounts': return [
+            { key: 'id', label: 'ID' },
+            { key: 'name', label: 'Discount Name' },
+            { key: 'value', label: 'Value / Type' },
+            { key: 'scope', label: 'Scope' },
+            { key: 'sharing', label: 'Sharing' },
+            { key: 'timing', label: 'Tax & Addon' },
+            { key: 'branches', label: 'Branches' },
+            { key: 'order_types', label: 'Order Types' },
+            { key: 'schedule', label: 'Schedule' },
+            { key: 'requires_manager_approval', label: 'Manager PIN' },
+            { key: 'is_active', label: 'Status' },
+        ];
+        case 'bankDiscounts': return [
+            { key: 'id', label: 'ID' },
+            { key: 'bank_name', label: 'Bank' },
+            { key: 'name', label: 'Campaign / Deal' },
+            { key: 'card_numbers', label: 'Card BINs / Numbers' },
+            { key: 'value', label: 'Discount %' },
+            { key: 'sharing', label: 'Sharing (Rest. / Bank)' },
+            { key: 'is_active', label: 'Status' },
         ];
         default: return [];
     }
@@ -288,6 +330,140 @@ const formFields = computed(() => {
             { key: 'notes', label: 'Notes', type: 'textarea', required: false },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
         ];
+        case 'discounts': return [
+            { key: 'name', label: 'Discount / Deal Name (e.g. Staff Discount)', type: 'text' },
+            { key: 'code', label: 'Short Code / Promo Slug (Optional, e.g. STAFF15)', type: 'text', required: false },
+            { 
+                key: 'type', 
+                label: 'Discount Type', 
+                type: 'select', 
+                options: [
+                    { value: 'percentage', label: 'Percentage (%) Off' },
+                    { value: 'fixed', label: 'Fixed Amount ($ / PKR) Off' },
+                ] 
+            },
+            { key: 'value', label: 'Discount Value (e.g. 15 for 15% or 200 for $200)', type: 'number', step: '0.01' },
+            { 
+                key: 'scope', 
+                label: 'Applicability Scope', 
+                type: 'select', 
+                options: [
+                    { value: 'cart', label: 'Whole Order (Subtotal)' },
+                    { value: 'category', label: 'Specific Categories (Food Groups)' },
+                    { value: 'item', label: 'Specific Food Items' },
+                ] 
+            },
+            { 
+                key: 'food_group_ids', 
+                label: 'Eligible Categories (Food Groups)', 
+                type: 'select', 
+                multiple: true, 
+                placeholder: 'Select food groups...',
+                options: (props.foodGroups || []).map(g => ({ value: g.id, label: g.name })),
+                showIf: (form) => form.scope === 'category',
+                required: false
+            },
+            { 
+                key: 'food_item_ids', 
+                label: 'Eligible Food Items', 
+                type: 'select', 
+                multiple: true, 
+                placeholder: 'Select food items...',
+                options: (props.foodItems || []).map(i => ({ value: i.id, label: i.name })),
+                showIf: (form) => form.scope === 'item',
+                required: false
+            },
+            { key: 'min_order_amount', label: 'Minimum Bill / Order Amount', type: 'number', step: '0.01', required: false },
+            { key: 'max_discount_amount', label: 'Maximum Discount Cap (Limit)', type: 'number', step: '0.01', required: false },
+            { 
+                key: 'party_id', 
+                label: 'Co-Funding Partner / Party (Optional)', 
+                type: 'select', 
+                placeholder: 'Select partner / bank if co-funded...',
+                options: (props.parties || []).map(p => ({ value: p.id, label: p.name })),
+                required: false
+            },
+            { key: 'merchant_share_percentage', label: 'Restaurant / Merchant Share (%)', type: 'number', step: '0.01', placeholder: 'e.g. 100 or 30', required: false },
+            { key: 'partner_share_percentage', label: 'Partner / Bank Share (%)', type: 'number', step: '0.01', placeholder: 'e.g. 0 or 70', required: false },
+            { 
+                key: 'apply_tax_timing', 
+                label: 'Tax Calculation Timing', 
+                type: 'select', 
+                options: [
+                    { value: 'before_tax', label: 'Discount Before Tax (GST on discounted net total)' },
+                    { value: 'after_tax', label: 'Discount After Tax (GST on full subtotal)' },
+                ] 
+            },
+            { 
+                key: 'apply_addon_timing', 
+                label: 'Addon Discount Applicability', 
+                type: 'select', 
+                options: [
+                    { value: 'with_addon', label: 'Discount With Addons (Item + addons)' },
+                    { value: 'without_addon', label: 'Discount Without Addons (Base item only)' },
+                ] 
+            },
+            { key: 'valid_from', label: 'Valid From (Date & Time)', type: 'datetime-local', required: false },
+            { key: 'valid_to', label: 'Valid Until (Date & Time)', type: 'datetime-local', required: false },
+            { 
+                key: 'branch_ids', 
+                label: 'Eligible Branches (Leave empty for all branches)', 
+                type: 'select', 
+                multiple: true, 
+                placeholder: 'All branches or select specific...',
+                options: (props.branches || []).map(b => ({ value: b.id, label: b.name })),
+                required: false
+            },
+            { 
+                key: 'order_type_ids', 
+                label: 'Eligible Order Types (Leave empty for all order types)', 
+                type: 'select', 
+                multiple: true, 
+                placeholder: 'All order types or select specific...',
+                options: (props.orderTypes || []).map(ot => ({ value: ot.id, label: ot.name })),
+                required: false
+            },
+            { key: 'description', label: 'Terms & Conditions / Description', type: 'textarea', required: false },
+            { key: 'requires_manager_approval', label: 'Requires Manager PIN / Approval', type: 'checkbox' },
+            { key: 'is_active', label: 'Active', type: 'checkbox' },
+        ];
+        case 'bankDiscounts': return [
+            { key: 'bank_name', label: 'Bank Name (e.g. HBL, Bank Alfalah, Meezan Bank)', type: 'text' },
+            { key: 'name', label: 'Campaign / Deal Name (e.g. HBL Dining Delight 20% Off)', type: 'text' },
+            { 
+                key: 'card_type', 
+                label: 'Card Tier / Type', 
+                type: 'select', 
+                options: [
+                    { value: 'All Cards', label: 'All Cards (Debit & Credit)' },
+                    { value: 'Credit Cards', label: 'Credit Cards Only' },
+                    { value: 'Debit Cards', label: 'Debit Cards Only' },
+                    { value: 'Platinum / Titanium', label: 'Platinum / Titanium Only' },
+                    { value: 'World Elite / Infinite', label: 'World Elite / Infinite Only' },
+                    { value: 'Gold / Classic', label: 'Gold / Classic Only' },
+                ] 
+            },
+            { 
+                key: 'card_numbers', 
+                label: 'Eligible Card Numbers / BIN Prefixes', 
+                type: 'textarea', 
+                placeholder: 'Enter 6-digit BIN prefixes or card numbers separated by commas or new lines (e.g. 421456, 524163, 4000123456789012)' 
+            },
+            { 
+                key: 'party_id', 
+                label: 'Linked Bank Party (for Ledger)', 
+                type: 'select', 
+                placeholder: 'Select bank party...',
+                options: (props.parties || []).map(p => ({ value: p.id, label: p.name })),
+                required: false 
+            },
+            { key: 'value', label: 'Discount Percentage (%) (e.g. 20 for 20%)', type: 'number', step: '0.01' },
+            { key: 'max_discount_amount', label: 'Maximum Discount Cap ($ / PKR) (e.g. 1000)', type: 'number', step: '0.01', required: false },
+            { key: 'min_order_amount', label: 'Minimum Bill / Order Amount ($ / PKR)', type: 'number', step: '0.01', required: false },
+            { key: 'merchant_share_percentage', label: 'Restaurant / Merchant Share (%) (e.g. 30)', type: 'number', step: '0.01', required: false },
+            { key: 'partner_share_percentage', label: 'Bank / Partner Share (%) (e.g. 70)', type: 'number', step: '0.01', required: false },
+            { key: 'is_active', label: 'Active', type: 'checkbox' },
+        ];
         default: return [];
     }
 });
@@ -300,10 +476,44 @@ const openModal = (item = null) => {
             initialData[field.key] = item && item.order_types ? item.order_types.map(ot => ot.id) : [];
         } else if (field.key === 'payment_type_ids') {
             initialData[field.key] = item && item.payment_types ? item.payment_types.map(pt => pt.id) : [];
+        } else if (field.key === 'branch_ids') {
+            initialData[field.key] = item && item.branches ? item.branches.map(b => b.id) : [];
+        } else if (field.key === 'food_group_ids') {
+            initialData[field.key] = item && item.food_groups ? item.food_groups.map(fg => fg.id) : [];
+        } else if (field.key === 'food_item_ids') {
+            initialData[field.key] = item && item.food_items ? item.food_items.map(fi => fi.id) : [];
+        } else if (field.type === 'datetime-local') {
+            if (item && item[field.key]) {
+                const d = new Date(item[field.key]);
+                if (!isNaN(d.getTime())) {
+                    const pad = (n) => String(n).padStart(2, '0');
+                    initialData[field.key] = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                } else {
+                    initialData[field.key] = '';
+                }
+            } else {
+                initialData[field.key] = '';
+            }
         } else if (field.key === 'party_type') {
             initialData[field.key] = item ? (item.party_type || 'delivery_partner') : 'delivery_partner';
+        } else if (field.key === 'type' && (activeTab.value === 'discounts' || activeTab.value === 'bankDiscounts')) {
+            initialData[field.key] = item ? item.type : 'percentage';
+        } else if (field.key === 'scope' && (activeTab.value === 'discounts' || activeTab.value === 'bankDiscounts')) {
+            initialData[field.key] = item ? item.scope : 'cart';
+        } else if (field.key === 'merchant_share_percentage') {
+            initialData[field.key] = item ? (item.merchant_share_percentage ?? (activeTab.value === 'bankDiscounts' ? 30 : 100)) : (activeTab.value === 'bankDiscounts' ? 30 : 100);
+        } else if (field.key === 'partner_share_percentage') {
+            initialData[field.key] = item ? (item.partner_share_percentage ?? (activeTab.value === 'bankDiscounts' ? 70 : 0)) : (activeTab.value === 'bankDiscounts' ? 70 : 0);
+        } else if (field.key === 'apply_tax_timing') {
+            initialData[field.key] = item ? (item.apply_tax_timing || 'before_tax') : 'before_tax';
+        } else if (field.key === 'apply_addon_timing') {
+            initialData[field.key] = item ? (item.apply_addon_timing || 'with_addon') : 'with_addon';
         } else if (field.type === 'checkbox') {
-            initialData[field.key] = item ? !!item[field.key] : true;
+            if (field.key === 'requires_manager_approval') {
+                initialData[field.key] = item ? !!item[field.key] : false;
+            } else {
+                initialData[field.key] = item ? !!item[field.key] : true;
+            }
         } else if (field.virtual || field.key.endsWith('_id')) {
             if (item) {
                 // Pre-fill virtuals for nested hierarchy
@@ -333,6 +543,26 @@ const openModal = (item = null) => {
             initialData[field.key] = item ? item[field.key] : (field.key === 'capacity' ? 4 : (field.key === 'credit_limit' || field.key === 'opening_balance' || field.key === 'service_charge_percent' ? 0 : ''));
         }
     });
+
+    if (activeTab.value === 'bankDiscounts') {
+        initialData.is_bank_discount = true;
+        initialData.type = 'percentage';
+        initialData.scope = 'cart';
+        if (!item) {
+            initialData.merchant_share_percentage = 30;
+            initialData.partner_share_percentage = 70;
+        }
+    } else if (activeTab.value === 'discounts') {
+        initialData.is_bank_discount = false;
+        if (!item) {
+            initialData.merchant_share_percentage = 100;
+            initialData.partner_share_percentage = 0;
+            initialData.party_id = null;
+        }
+        initialData.bank_name = null;
+        initialData.card_type = null;
+        initialData.card_numbers = null;
+    }
 
     if (activeTab.value === 'branches') {
         const existingPivots = item?.payment_types || [];
@@ -368,6 +598,8 @@ const getRouteGroupAndPrefix = () => {
         case 'paymentTypes': return { group: 'restaurant', prefix: 'payment-types' };
         case 'orderTypes': return { group: 'restaurant', prefix: 'order-types' };
         case 'parties': return { group: 'restaurant', prefix: 'parties' };
+        case 'discounts': return { group: 'restaurant', prefix: 'discounts' };
+        case 'bankDiscounts': return { group: 'restaurant', prefix: 'discounts' };
     }
 };
 
@@ -589,6 +821,96 @@ const submitPosSettings = () => {
                                 </span>
                             </div>
                         </template>
+                        <template #cell-bank_name="{item}">
+                            <div v-if="activeTab === 'bankDiscounts'">
+                                <div class="font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-indigo-500 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                                    {{ item.bank_name || 'Bank' }}
+                                </div>
+                                <span v-if="item.card_type" class="px-1.5 py-0.2 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                    {{ item.card_type }}
+                                </span>
+                            </div>
+                            <span v-else>{{ item.bank_name }}</span>
+                        </template>
+                        <template #cell-card_numbers="{item}">
+                            <div v-if="activeTab === 'bankDiscounts'" class="max-w-[200px]">
+                                <span class="font-mono text-xs font-semibold text-indigo-600 dark:text-cyan-400 truncate block" :title="item.card_numbers">
+                                    {{ item.card_numbers }}
+                                </span>
+                            </div>
+                            <span v-else>{{ item.card_numbers }}</span>
+                        </template>
+                        <template #cell-value="{item}">
+                            <div v-if="activeTab === 'discounts' || activeTab === 'bankDiscounts'">
+                                <span class="font-bold text-indigo-600 dark:text-cyan-400">
+                                    {{ item.type === 'percentage' ? Number(item.value) + '%' : '$' + Number(item.value).toFixed(2) }}
+                                </span>
+                                <div v-if="item.max_discount_amount" class="text-[10px] text-slate-400">
+                                    Cap: ${{ Number(item.max_discount_amount).toFixed(2) }}
+                                </div>
+                            </div>
+                            <span v-else>{{ item.value }}</span>
+                        </template>
+                        <template #cell-scope="{item}">
+                            <span v-if="activeTab === 'discounts'" class="px-2 py-0.5 rounded-full text-xs font-semibold capitalize bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                {{ item.scope === 'cart' ? 'Whole Order' : (item.scope === 'category' ? 'Category (' + (item.food_groups?.length || 0) + ')' : 'Items (' + (item.food_items?.length || 0) + ')') }}
+                            </span>
+                            <span v-else>{{ item.scope }}</span>
+                        </template>
+                        <template #cell-sharing="{item}">
+                            <div v-if="activeTab === 'bankDiscounts'" class="text-xs">
+                                <div class="font-semibold text-slate-700 dark:text-slate-300">
+                                    Rest: {{ Number(item.merchant_share_percentage ?? 30) }}%
+                                </div>
+                                <div class="text-[11px] font-bold text-indigo-600 dark:text-cyan-400">
+                                    {{ item.party?.name || 'Bank' }}: {{ Number(item.partner_share_percentage ?? 70) }}%
+                                </div>
+                            </div>
+                        </template>
+                        <template #cell-timing="{item}">
+                            <div v-if="activeTab === 'discounts' || activeTab === 'bankDiscounts'" class="flex flex-col gap-1 text-[11px]">
+                                <span :class="item.apply_tax_timing === 'before_tax' ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'text-blue-700 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800'" class="px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">
+                                    {{ item.apply_tax_timing === 'before_tax' ? 'Before Tax' : 'After Tax' }}
+                                </span>
+                                <span :class="item.apply_addon_timing === 'with_addon' ? 'text-purple-700 bg-purple-50 dark:bg-purple-950/40 dark:text-purple-400 border border-purple-200 dark:border-purple-800' : 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'" class="px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">
+                                    {{ item.apply_addon_timing === 'with_addon' ? 'With Addons' : 'Base Only' }}
+                                </span>
+                            </div>
+                        </template>
+                        <template #cell-schedule="{item}">
+                            <div v-if="activeTab === 'discounts' || activeTab === 'bankDiscounts'" class="text-xs">
+                                <div v-if="item.valid_from || item.valid_to" class="text-[11px] leading-tight">
+                                    <div class="text-slate-600 dark:text-slate-300"><span class="text-slate-400 text-[10px]">From:</span> {{ item.valid_from ? new Date(item.valid_from).toLocaleDateString() + ' ' + new Date(item.valid_from).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Always' }}</div>
+                                    <div class="text-slate-600 dark:text-slate-300"><span class="text-slate-400 text-[10px]">To:</span> {{ item.valid_to ? new Date(item.valid_to).toLocaleDateString() + ' ' + new Date(item.valid_to).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Never' }}</div>
+                                </div>
+                                <div v-else-if="item.start_time && item.end_time" class="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    {{ item.start_time.substring(0, 5) }} - {{ item.end_time.substring(0, 5) }}
+                                </div>
+                                <div v-else class="text-slate-400 italic text-[11px]">Always Active</div>
+                            </div>
+                            <span v-else>{{ item.schedule }}</span>
+                        </template>
+                        <template #cell-requires_manager_approval="{item}">
+                            <span :class="item.requires_manager_approval ? 'px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' : 'text-slate-400 text-xs'">
+                                {{ item.requires_manager_approval ? 'Required (PIN)' : 'No' }}
+                            </span>
+                        </template>
+                        <template #cell-branches="{item}">
+                            <div class="flex flex-wrap gap-1 max-w-xs">
+                                <span 
+                                    v-for="b in item.branches" 
+                                    :key="b.id" 
+                                    class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-cyan-300 border border-indigo-200/60 dark:border-indigo-900/40"
+                                >
+                                    {{ b.name }}
+                                </span>
+                                <span v-if="!item.branches || item.branches.length === 0" class="text-xs text-slate-400 italic">
+                                    All Branches
+                                </span>
+                            </div>
+                        </template>
                         <template #cell-is_active="{item}">
                             <span :class="item.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full text-xs font-bold' : 'bg-slate-100 text-slate-800 dark:bg-slate-700/50 dark:text-slate-400 px-2.5 py-0.5 rounded-full text-xs font-bold'">
                                 {{ item.is_active ? 'Active' : 'Inactive' }}
@@ -605,7 +927,7 @@ const submitPosSettings = () => {
             </h2>
             <form @submit.prevent="submitForm" class="flex flex-col">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div v-for="field in formFields" :key="field.key" :class="{'md:col-span-2': field.type === 'textarea' || field.multiple}">
+                    <div v-for="field in formFields" :key="field.key" v-show="field.showIf === undefined || field.showIf(form)" :class="{'md:col-span-2': field.type === 'textarea' || field.multiple}">
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{{ field.label }}</label>
                     
                     <template v-if="field.type === 'checkbox'">
@@ -624,7 +946,7 @@ const submitPosSettings = () => {
                             labelKey="label"
                             :placeholder="field.placeholder || (field.multiple ? 'Select options...' : 'Select an option')" 
                             searchPlaceholder="Search option..."
-                            :disabled="!field.virtual && (field.dynamicOptions ? field.dynamicOptions(form).length === 0 : field.options.length === 0)"
+                            :disabled="field.disabled !== undefined ? field.disabled : (!field.virtual && !field.multiple && (field.dynamicOptions ? field.dynamicOptions(form).length === 0 : (field.options && field.options.length === 0)))"
                         />
                     </template>
                     

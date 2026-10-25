@@ -42,6 +42,10 @@ class SettingController extends Controller
             'paymentTypes' => \App\Models\PaymentType::orderBy('name')->get(),
             'orderTypes' => \App\Models\OrderType::orderBy('name')->get(),
             'parties' => \App\Models\Party::with(['city', 'orderTypes', 'paymentTypes'])->orderBy('name')->get(),
+            'discounts' => \App\Models\Discount::where('is_bank_discount', false)->with(['branches', 'orderTypes', 'foodGroups', 'foodItems', 'party'])->latest('id')->get(),
+            'bankDiscounts' => \App\Models\Discount::where('is_bank_discount', true)->with(['branches', 'orderTypes', 'foodGroups', 'foodItems', 'party'])->latest('id')->get(),
+            'foodGroups' => \App\Models\FoodGroup::where('is_active', true)->orderBy('name')->get(),
+            'foodItems' => \App\Models\FoodItem::where('is_active', true)->orderBy('name')->get(['id', 'name', 'food_group_id']),
         ]);
     }
 

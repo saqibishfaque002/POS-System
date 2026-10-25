@@ -60,6 +60,8 @@ const categories = [
         icon: 'credit-card',
         items: [
             { id: 'paymentTypes', label: 'Payment Types', icon: 'credit-card' },
+            { id: 'discounts', label: 'Discounts & Deals', icon: 'tag' },
+            { id: 'bankDiscounts', label: 'Bank Card Discounts', icon: 'credit-card' },
         ]
     }
 ];

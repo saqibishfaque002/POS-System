@@ -32,6 +32,22 @@ const props = defineProps({
     disabled: {
         type: Boolean,
         default: false
+    },
+    inputClass: {
+        type: String,
+        default: ''
+    },
+    size: {
+        type: String,
+        default: 'normal'
+    },
+    showSearch: {
+        type: Boolean,
+        default: true
+    },
+    clearable: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -40,6 +56,7 @@ const emit = defineEmits(['update:modelValue']);
 const isOpen = ref(false);
 const searchQuery = ref('');
 const dropdownRef = ref(null);
+const dropdownMenuRef = ref(null);
 const searchInputRef = ref(null);
 const dropdownStyle = ref({});
 
@@ -74,16 +91,17 @@ const updatePosition = () => {
 
 const isSelected = (val) => {
     if (props.multiple) {
-        return Array.isArray(props.modelValue) && props.modelValue.includes(val);
+        return Array.isArray(props.modelValue) && props.modelValue.some(v => v == val);
     }
-    return props.modelValue === val;
+    return props.modelValue !== null && props.modelValue !== undefined && props.modelValue == val;
 };
 
 const selectedItems = computed(() => {
     if (props.multiple) {
-        return props.options.filter(opt => Array.isArray(props.modelValue) && props.modelValue.includes(opt[props.valueKey]));
+        return props.options.filter(opt => Array.isArray(props.modelValue) && props.modelValue.some(v => v == opt[props.valueKey]));
     } else {
-        const item = props.options.find(opt => opt[props.valueKey] === props.modelValue);
+        if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') return [];
+        const item = props.options.find(opt => opt[props.valueKey] == props.modelValue);
         return item ? [item] : [];
     }
 });
@@ -120,13 +138,8 @@ const toggleDropdown = async () => {
 
 const closeDropdown = (e) => {
     if (isOpen.value) {
-        // Find if the click is inside the teleported dropdown or the trigger
         const isClickInsideTrigger = dropdownRef.value && dropdownRef.value.contains(e.target);
-        
-        // Let's rely on event bubbling inside the teleported component to avoid closing it
-        // Or we can check if it has a specific class or id, but standard is:
-        const dropdownElement = document.getElementById('select-dropdown-container');
-        const isClickInsideDropdown = dropdownElement && dropdownElement.contains(e.target);
+        const isClickInsideDropdown = dropdownMenuRef.value && dropdownMenuRef.value.contains(e.target);
         
         if (!isClickInsideTrigger && !isClickInsideDropdown) {
             isOpen.value = false;
@@ -182,14 +195,18 @@ const removeOption = (val) => {
         <!-- Main Input Display -->
         <div 
             @click="toggleDropdown"
-            class="pos-input w-full min-h-[42px] flex flex-wrap items-center gap-1.5 p-1.5 pr-8 transition-colors"
-            :class="{
-                'ring-2 ring-indigo-500 border-transparent': isOpen, 
-                'cursor-pointer': !disabled, 
-                'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-900': disabled
-            }"
+            class="pos-input w-full flex flex-wrap items-center gap-1.5 p-1.5 pr-8 transition-colors"
+            :class="[
+                size === 'sm' ? 'min-h-[36px] !py-1 !px-2.5 !text-xs !rounded-lg' : 'min-h-[42px]',
+                inputClass,
+                {
+                    'ring-2 ring-indigo-500 border-transparent': isOpen, 
+                    'cursor-pointer': !disabled, 
+                    'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-900': disabled
+                }
+            ]"
         >
-            <div v-if="selectedItems.length === 0" class="text-slate-400 dark:text-slate-500 px-2 py-1 select-none text-sm">
+            <div v-if="selectedItems.length === 0" class="text-slate-400 dark:text-slate-500 px-2 py-1 select-none" :class="size === 'sm' ? 'text-xs' : 'text-sm'">
                 {{ placeholder }}
             </div>
             
@@ -198,7 +215,8 @@ const removeOption = (val) => {
                 <div 
                     v-for="item in selectedItems" 
                     :key="item[valueKey]"
-                    class="flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-[#06b6d4] px-2 py-0.5 rounded-md text-sm border border-indigo-200 dark:border-indigo-800/50"
+                    class="flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-[#06b6d4] px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/50"
+                    :class="size === 'sm' ? 'text-xs' : 'text-sm'"
                 >
                     <span class="max-w-[150px] truncate">{{ item[labelKey] }}</span>
                     <button 
@@ -216,14 +234,14 @@ const removeOption = (val) => {
 
             <!-- Single Selection Text -->
             <template v-else>
-                <div v-if="selectedItems.length > 0" class="px-2 py-1 text-sm text-slate-800 dark:text-slate-200 truncate flex-1">
+                <div v-if="selectedItems.length > 0" class="px-2 py-1 text-slate-800 dark:text-slate-200 truncate flex-1 font-medium" :class="size === 'sm' ? 'text-xs' : 'text-sm'">
                     {{ selectedItems[0][labelKey] }} <span v-if="selectedItems[0].sku" class="text-xs text-slate-400">({{ selectedItems[0].sku }})</span>
                 </div>
             </template>
         </div>
         
         <!-- Chevron Icon -->
-        <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+        <div class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" :class="{'rotate-180': isOpen}" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
             </svg>
@@ -239,10 +257,10 @@ const removeOption = (val) => {
                 leave-from-class="transform opacity-100 scale-100" 
                 leave-to-class="transform opacity-0 scale-95"
             >
-                <div v-show="isOpen" id="select-dropdown-container" :style="dropdownStyle" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-64">
+                <div v-show="isOpen" ref="dropdownMenuRef" :style="dropdownStyle" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-64">
                     
                     <!-- Search Input -->
-                <div class="p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 sticky top-0 z-10">
+                <div v-if="showSearch" class="p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 sticky top-0 z-10">
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
                             <svg class="h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

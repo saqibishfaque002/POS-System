@@ -12,6 +12,14 @@ const props = defineProps({
     propertyGroups: Array,
     propertyItems: Array,
     globalVariations: Array,
+    branches: {
+        type: Array,
+        default: () => []
+    },
+    menus: {
+        type: Array,
+        default: () => []
+    },
 });
 
 const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || 'foodGroups');
@@ -55,6 +63,8 @@ const columns = computed(() => {
             { key: 'id', label: 'ID' },
             { key: 'food_group_id', label: 'Group' },
             { key: 'name', label: 'Name' },
+            { key: 'branches', label: 'Available Branches' },
+            { key: 'menus', label: 'Assigned Menus' },
             { key: 'base_price', label: 'Base Price' },
             { key: 'is_active', label: 'Active' },
         ];
@@ -92,8 +102,26 @@ const formFields = computed(() => {
             { key: 'is_active', label: 'Active', type: 'checkbox' },
         ];
         case 'foodItems': return [
-            { key: 'food_group_id', label: 'Food Group', type: 'select', options: props.foodGroups.map(g => ({value: g.id, label: g.name})) },
+            { key: 'food_group_id', label: 'Food Group', type: 'select', options: (props.foodGroups || []).map(g => ({value: g.id, label: g.name})) },
             { key: 'name', label: 'Name', type: 'text' },
+            { 
+                key: 'branch_ids', 
+                label: 'Available in Branches', 
+                type: 'select', 
+                multiple: true, 
+                placeholder: 'Select available branches...',
+                options: (props.branches || []).map(b => ({value: b.id, label: b.name})),
+                required: false
+            },
+            { 
+                key: 'menu_ids', 
+                label: 'Include in Menus', 
+                type: 'select', 
+                multiple: true, 
+                placeholder: 'Select assigned menus...',
+                options: (props.menus || []).map(m => ({value: m.id, label: m.name})),
+                required: false
+            },
             { key: 'has_variations', label: 'Item Has Variations?', type: 'checkbox' },
             { key: 'base_price', label: 'Base Price', type: 'number', showIf: (form) => !form.has_variations },
             { key: 'custom_variations', label: 'Variations', type: 'custom_variations', showIf: (form) => form.has_variations },
@@ -106,7 +134,7 @@ const formFields = computed(() => {
             { key: 'is_active', label: 'Active', type: 'checkbox' },
         ];
         case 'propertyItems': return [
-            { key: 'property_group_id', label: 'Property Group', type: 'select', options: props.propertyGroups.map(g => ({value: g.id, label: g.name})) },
+            { key: 'property_group_id', label: 'Property Group', type: 'select', options: (props.propertyGroups || []).map(g => ({value: g.id, label: g.name})) },
             { key: 'name', label: 'Name (e.g. Extra Sauce)', type: 'text' },
             { key: 'extra_price', label: 'Extra Price', type: 'number' },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
@@ -123,9 +151,13 @@ const openModal = (item = null) => {
     editingItem.value = item;
     const initialData = {};
     formFields.value.forEach(field => {
-        if (field.type === 'checkbox') {
+        if (field.key === 'branch_ids') {
+            initialData[field.key] = item ? (item.branches ? item.branches.map(b => b.id) : []) : (props.branches || []).map(b => b.id);
+        } else if (field.key === 'menu_ids') {
+            initialData[field.key] = item ? (item.menus ? item.menus.map(m => m.id) : []) : (props.menus || []).map(m => m.id);
+        } else if (field.type === 'checkbox') {
             if (field.key === 'has_variations') {
-                initialData[field.key] = item && item.variations && item.variations.length > 0;
+                initialData[field.key] = !!(item && item.variations && item.variations.length > 0);
             } else {
                 initialData[field.key] = item ? !!item[field.key] : true;
             }
@@ -207,6 +239,39 @@ const deleteItem = (item) => {
             </template>
             <template #cell-price="{item}">
                 ${{ parseFloat(item.price || 0).toFixed(2) }}
+            </template>
+            <template #cell-branches="{item}">
+                <div class="flex flex-wrap gap-1 max-w-xs">
+                    <span 
+                        v-for="b in item.branches" 
+                        :key="b.id" 
+                        class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40"
+                    >
+                        {{ b.name }}
+                    </span>
+                    <span v-if="!item.branches || item.branches.length === 0" class="text-xs text-slate-400 italic">
+                        All Branches
+                    </span>
+                </div>
+            </template>
+            <template #cell-menus="{item}">
+                <div class="flex flex-wrap gap-1 max-w-xs">
+                    <span 
+                        v-for="m in item.menus" 
+                        :key="m.id" 
+                        class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40"
+                    >
+                        {{ m.name }}
+                    </span>
+                    <span v-if="!item.menus || item.menus.length === 0" class="text-xs text-slate-400 italic">
+                        All Menus
+                    </span>
+                </div>
+            </template>
+            <template #cell-is_active="{item}">
+                <span :class="item.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-2.5 py-0.5 rounded-full text-xs font-bold' : 'bg-slate-100 text-slate-800 dark:bg-slate-700/50 dark:text-slate-400 px-2.5 py-0.5 rounded-full text-xs font-bold'">
+                    {{ item.is_active ? 'Active' : 'Inactive' }}
+                </span>
             </template>
         </DataTable>
 

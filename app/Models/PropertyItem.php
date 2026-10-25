@@ -20,4 +20,9 @@ class PropertyItem extends Model
     {
         return $this->belongsTo(PropertyGroup::class);
     }
+
+    public function recipe()
+    {
+        return $this->morphOne(Recipe::class, 'recipeable');
+    }
 }
