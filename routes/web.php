@@ -41,6 +41,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/shifts/close', [\App\Http\Controllers\POSTerminalController::class, 'closeShift'])->name('shifts.close');
         Route::get('/shifts/summary', [\App\Http\Controllers\POSTerminalController::class, 'getShiftSummary'])->name('shifts.summary');
         Route::get('/shifts/monitor', [\App\Http\Controllers\POSTerminalController::class, 'getShiftMonitor'])->name('shifts.monitor');
+        Route::get('/work-periods', [\App\Http\Controllers\POSTerminalController::class, 'renderWorkPeriods'])->name('work-periods');
+        Route::get('/work-periods/days', [\App\Http\Controllers\POSTerminalController::class, 'getBusinessDaysData'])->name('work-periods.days');
+        Route::get('/work-periods/shifts', [\App\Http\Controllers\POSTerminalController::class, 'getShiftMonitor'])->name('work-periods.shifts');
+        Route::get('/work-periods/day-summary', [\App\Http\Controllers\POSTerminalController::class, 'getBusinessDaySummary'])->name('work-periods.day-summary');
         Route::get('/monitor', [\App\Http\Controllers\POSTerminalController::class, 'renderShiftMonitor'])->name('monitor');
     });
 

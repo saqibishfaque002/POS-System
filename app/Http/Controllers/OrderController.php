@@ -17,7 +17,7 @@ class OrderController extends Controller
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
-            'total' => 'required|numeric',
+            'total' => 'required|numeric|min:0',
             'offline_uuid' => 'nullable|string'
         ]);
 

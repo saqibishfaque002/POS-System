@@ -131,6 +131,7 @@ const columns = computed(() => {
             { key: 'company_id', label: 'Company' },
             { key: 'city_id', label: 'City' },
             { key: 'name', label: 'Name' },
+            { key: 'table_order_types_summary', label: 'Table Required For' },
             { key: 'is_active', label: 'Active' },
         ];
         case 'floors': return [
@@ -237,6 +238,17 @@ const formFields = computed(() => {
             { key: 'name', label: 'Branch Name', type: 'text' },
             { key: 'address', label: 'Address', type: 'text', required: false },
             { key: 'phone', label: 'Phone', type: 'text', required: false },
+            { key: 'override_table_order_types', label: 'Override Global POS Table Setting', type: 'checkbox' },
+            { 
+                key: 'table_order_types', 
+                label: 'Order Types Requiring Dining Table Selection', 
+                type: 'select', 
+                multiple: true,
+                options: props.orderTypes.map(ot => ({ value: ot.id, label: ot.name })),
+                placeholder: 'Select order types...',
+                showIf: (f) => !!f.override_table_order_types,
+                required: false 
+            },
             { key: 'is_active', label: 'Active', type: 'checkbox' },
         ];
         case 'floors': return [
@@ -565,6 +577,8 @@ const openModal = (item = null) => {
     }
 
     if (activeTab.value === 'branches') {
+        initialData.override_table_order_types = item && item.table_order_types !== null && item.table_order_types !== undefined;
+        initialData.table_order_types = item && item.table_order_types ? (Array.isArray(item.table_order_types) ? item.table_order_types.map(Number) : []) : [];
         const existingPivots = item?.payment_types || [];
         initialData.payment_types = (props.paymentTypes || []).map(pt => {
             const existing = existingPivots.find(ep => ep.id === pt.id);
@@ -605,6 +619,11 @@ const getRouteGroupAndPrefix = () => {
 
 const submitForm = () => {
     const { group, prefix } = getRouteGroupAndPrefix();
+    if (activeTab.value === 'branches') {
+        if (!form.override_table_order_types) {
+            form.table_order_types = null;
+        }
+    }
     if (editingItem.value) {
         form.put(route(`${group}.${prefix}.update`, editingItem.value.id), {
             onSuccess: () => closeModal(),
@@ -631,10 +650,49 @@ const generalForm = useForm({
     favicon: null,
 });
 
+const parseJsonSetting = (val, defaultVal = []) => {
+    if (!val && val !== '0') return defaultVal;
+    if (Array.isArray(val)) return val;
+    try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : defaultVal;
+    } catch {
+        return defaultVal;
+    }
+};
+
+const defaultGlobalTableOrderTypes = (props.orderTypes || [])
+    .filter(ot => ot.code === 'dine_in' || ot.name?.toLowerCase().includes('dine'))
+    .map(ot => ot.id);
+
 const posForm = useForm({
     tax_rate: props.settings.tax_rate || 0,
     print_mode: props.settings.print_mode || 'browser',
     auto_fetch_supplier_items: props.settings.auto_fetch_supplier_items == '1' || props.settings.auto_fetch_supplier_items == 'true' || false,
+    table_required_order_types: props.settings.table_required_order_types !== undefined && props.settings.table_required_order_types !== null
+        ? parseJsonSetting(props.settings.table_required_order_types, defaultGlobalTableOrderTypes)
+        : defaultGlobalTableOrderTypes,
+});
+
+const getOrderTypeName = (id) => {
+    const ot = props.orderTypes.find(o => o.id == id);
+    return ot ? ot.name : `Order Type #${id}`;
+};
+
+const globalTableOrderTypeNames = computed(() => {
+    const raw = props.settings.table_required_order_types;
+    let ids = [];
+    if (raw) {
+        try {
+            ids = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        } catch {
+            ids = [];
+        }
+    }
+    if (!Array.isArray(ids) || ids.length === 0) {
+        return (props.orderTypes || []).filter(ot => ot.code === 'dine_in' || ot.name?.toLowerCase().includes('dine')).map(ot => ot.name).join(', ') || 'Dine-in';
+    }
+    return ids.map(id => getOrderTypeName(id)).join(', ');
 });
 
 const submitGeneralSettings = () => {
@@ -730,6 +788,21 @@ const submitPosSettings = () => {
                             </div>
                             
                             <div>
+                                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Order Types Requiring Table Selection (Global Default)</label>
+                                <div class="w-full md:w-1/2">
+                                    <SelectInput 
+                                        v-model="posForm.table_required_order_types" 
+                                        :options="props.orderTypes.map(ot => ({ value: ot.id, label: ot.name }))" 
+                                        :multiple="true"
+                                        valueKey="value"
+                                        labelKey="label"
+                                        placeholder="Select order types..." 
+                                    />
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2">When these order types are selected at the POS terminal, the dining table selection modal will open automatically. Individual branches can override this setting.</p>
+                            </div>
+
+                            <div>
                                 <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Auto-Fetch Supplier Items</label>
                                 <label class="relative inline-flex items-center cursor-pointer mt-1">
                                     <input type="checkbox" v-model="posForm.auto_fetch_supplier_items" class="sr-only peer">
@@ -775,6 +848,19 @@ const submitPosSettings = () => {
                         </template>
                         <template #cell-branch_id="{item}">
                             {{ item.branch?.name || item.branch_id }}
+                        </template>
+                        <template #cell-table_order_types_summary="{item}">
+                            <span v-if="item.table_order_types === null || item.table_order_types === undefined" class="text-xs text-slate-500 dark:text-slate-400 italic">
+                                Inherits Global ({{ globalTableOrderTypeNames }})
+                            </span>
+                            <div v-else-if="Array.isArray(item.table_order_types) && item.table_order_types.length > 0" class="flex flex-wrap gap-1">
+                                <span v-for="id in item.table_order_types" :key="id" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                    {{ getOrderTypeName(id) }}
+                                </span>
+                            </div>
+                            <span v-else class="text-xs text-rose-500 dark:text-rose-400 font-semibold">
+                                None (Disabled)
+                            </span>
                         </template>
                         <template #cell-floor_id="{item}">
                             {{ item.floor?.name || item.floor_id }}

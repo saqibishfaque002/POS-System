@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import SelectInput from '@/Components/SelectInput.vue';
 
 const props = defineProps({
     cart: {
@@ -7,6 +8,16 @@ const props = defineProps({
         default: () => []
     },
     orderType: Object,
+    orderTypes: {
+        type: Array,
+        default: () => []
+    },
+    currentOrderTypeId: [Number, String],
+    availableParties: {
+        type: Array,
+        default: () => []
+    },
+    selectedPartyId: [Number, String],
     selectedTable: Object,
     selectedCustomer: Object,
     selectedParty: Object,
@@ -60,6 +71,10 @@ const props = defineProps({
     businessDate: String,
     businessDay: String,
     businessDateFormatted: String,
+    tableOrderTypeIds: {
+        type: Array,
+        default: () => []
+    },
 });
 
 const emit = defineEmits([
@@ -75,49 +90,49 @@ const emit = defineEmits([
     'update:deliveryCharges',
     'update:riderName',
     'update:deliveryAddress',
+    'update:currentOrderTypeId',
+    'update:selectedPartyId',
+    'openTableModal',
+    'openCustomerModal',
+    'selectOrderType',
 ]);
 
 const formatPrice = (val) => {
     return Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+const isTableRequired = computed(() => {
+    if (!props.currentOrderTypeId) return false;
+    return props.tableOrderTypeIds.map(Number).includes(Number(props.currentOrderTypeId));
+});
+
 const isDineIn = computed(() => {
-    return props.orderType?.name?.toLowerCase().includes('dine') || props.orderType?.code === 'dine_in';
+    return isTableRequired.value || props.orderType?.name?.toLowerCase().includes('dine') || props.orderType?.code === 'dine_in';
 });
 
 const isDelivery = computed(() => {
     return props.orderType?.name?.toLowerCase().includes('delivery') || props.orderType?.code === 'delivery';
 });
+
+const handleOrderTypeClick = (ot) => {
+    emit('update:currentOrderTypeId', ot.id);
+    emit('selectOrderType', ot);
+};
 </script>
 
 <template>
     <div class="w-80 md:w-96 lg:w-[420px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full shrink-0 select-none shadow-lg z-10">
-        <!-- Cart Header: Order Info & Business Date -->
-        <div class="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 flex flex-col gap-2 shrink-0">
+        <!-- Cart Header: Order Info, Order Type, Party & Business Date -->
+        <div class="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 flex flex-col gap-2.5 shrink-0">
+            <!-- Order Title & Clear button -->
             <div class="flex items-center justify-between">
-                <div>
-                    <div class="flex items-center space-x-2">
-                        <span class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                            {{ editingOrderId ? `Order #${editingOrderId}` : 'Current Order' }}
-                        </span>
-                        <span v-if="tokenNumber" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-cyan-950 text-indigo-700 dark:text-cyan-400 border border-indigo-200 dark:border-cyan-800">
-                            {{ tokenNumber }}
-                        </span>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                        <span class="font-bold text-slate-700 dark:text-slate-300">
-                            {{ orderType?.name || 'Order' }}
-                        </span>
-                        <span v-if="selectedParty" class="font-bold text-indigo-600 dark:text-cyan-400 bg-indigo-50 dark:bg-cyan-950/60 px-1.5 py-0.2 rounded border border-indigo-200 dark:border-cyan-800">
-                            • {{ selectedParty.name }}
-                        </span>
-                        <span v-if="isDineIn && selectedTable" class="text-amber-600 dark:text-amber-400 font-bold">
-                            • Table: {{ selectedTable.name }}
-                        </span>
-                        <span v-if="selectedCustomer" class="text-emerald-600 dark:text-emerald-400 font-bold truncate max-w-[120px]">
-                            • {{ selectedCustomer.name }}
-                        </span>
-                    </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                        {{ editingOrderId ? `Order #${editingOrderId}` : 'Current Order' }}
+                    </span>
+                    <span v-if="tokenNumber" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-cyan-950 text-indigo-700 dark:text-cyan-400 border border-indigo-200 dark:border-cyan-800">
+                        {{ tokenNumber }}
+                    </span>
                 </div>
 
                 <!-- Clear Cart Button -->
@@ -125,13 +140,90 @@ const isDelivery = computed(() => {
                     v-if="cart.length > 0"
                     type="button"
                     @click="emit('clearCart')"
-                    class="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-semibold flex items-center space-x-1 p-1 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                    class="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-semibold flex items-center space-x-1 p-1 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                     title="Clear Cart"
                 >
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                     <span>Clear</span>
+                </button>
+            </div>
+
+            <!-- Order Type Segmented Tabs -->
+            <div v-if="orderTypes && orderTypes.length > 0" class="grid grid-cols-3 gap-1 bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                <button
+                    v-for="ot in orderTypes"
+                    :key="ot.id"
+                    type="button"
+                    @click="handleOrderTypeClick(ot)"
+                    :class="[
+                        'py-1.5 px-2 text-xs font-black rounded-lg transition-all flex items-center justify-center space-x-1.5 cursor-pointer',
+                        currentOrderTypeId == ot.id
+                            ? 'bg-indigo-600 text-white shadow-xs dark:bg-cyan-600'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/60'
+                    ]"
+                >
+                    <span v-if="ot.name.toLowerCase().includes('dine')">🍽️</span>
+                    <span v-else-if="ot.name.toLowerCase().includes('take')">🥡</span>
+                    <span v-else>🛵</span>
+                    <span class="truncate">{{ ot.name }}</span>
+                </button>
+            </div>
+
+            <!-- Contextual Controls Row: Party Selector, Table Selector, Customer Button -->
+            <div class="flex items-center gap-2">
+                <!-- Party Selector -->
+                <div v-if="availableParties && availableParties.length > 0" class="flex-1 min-w-0">
+                    <SelectInput
+                        :modelValue="selectedPartyId"
+                        @update:modelValue="emit('update:selectedPartyId', $event)"
+                        :options="availableParties"
+                        valueKey="id"
+                        labelKey="name"
+                        placeholder="Select Party"
+                        size="sm"
+                        :showSearch="availableParties.length > 4"
+                    />
+                </div>
+
+                <!-- Table Selector Button (when table is required) -->
+                <button
+                    v-if="isTableRequired"
+                    type="button"
+                    @click="emit('openTableModal')"
+                    :class="[
+                        'px-2.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center space-x-1 shrink-0 cursor-pointer',
+                        selectedTable
+                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400'
+                            : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-400'
+                    ]"
+                    :title="selectedTable ? `Table: ${selectedTable.name}` : 'Select Dining Table'"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    <span class="truncate max-w-[80px]">{{ selectedTable ? selectedTable.name : 'Table' }}</span>
+                </button>
+
+                <!-- Customer Selector Button -->
+                <button
+                    type="button"
+                    @click="emit('openCustomerModal')"
+                    :class="[
+                        'px-2.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center space-x-1 shrink-0 cursor-pointer',
+                        selectedCustomer
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400'
+                            : isDelivery
+                                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-400 animate-pulse'
+                                : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-400'
+                    ]"
+                    :title="selectedCustomer ? `Customer: ${selectedCustomer.name}` : 'Select or Register Customer'"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span class="truncate max-w-[85px]">{{ selectedCustomer ? selectedCustomer.name : (isDelivery ? 'Customer*' : 'Customer') }}</span>
                 </button>
             </div>
 

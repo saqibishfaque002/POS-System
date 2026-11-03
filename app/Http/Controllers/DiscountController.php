@@ -119,7 +119,8 @@ class DiscountController extends Controller
         $orderTypeId = isset($validated['order_type_id']) ? (int)$validated['order_type_id'] : null;
         $subtotal = isset($validated['subtotal']) ? (float)$validated['subtotal'] : (float)($validated['cart_subtotal'] ?? 0);
         $addonAmount = isset($validated['addon_amount']) ? (float)$validated['addon_amount'] : 0.00;
-        $cardNumber = $validated['card_number'] ?? $validated['card_bin'] ?? null;
+        $cardInput = $validated['card_bin'] ?? $validated['card_number'] ?? null;
+        $cardNumber = $cardInput ? substr(preg_replace('/\D/', '', $cardInput), 0, 6) : null;
         $items = $validated['items'] ?? [];
 
         $allActiveDiscounts = Discount::active()
@@ -186,7 +187,8 @@ class DiscountController extends Controller
         $orderTypeId = isset($validated['order_type_id']) ? (int)$validated['order_type_id'] : null;
         $subtotal = isset($validated['subtotal']) ? (float)$validated['subtotal'] : (float)($validated['cart_subtotal'] ?? 0);
         $addonAmount = isset($validated['addon_amount']) ? (float)$validated['addon_amount'] : 0.00;
-        $cardNumber = $validated['card_number'] ?? $validated['card_bin'] ?? null;
+        $cardInput = $validated['card_bin'] ?? $validated['card_number'] ?? null;
+        $cardNumber = $cardInput ? substr(preg_replace('/\D/', '', $cardInput), 0, 6) : null;
         $items = $validated['items'] ?? [];
 
         $discount = Discount::where('code', $code)->first();

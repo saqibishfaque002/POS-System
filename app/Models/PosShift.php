@@ -15,6 +15,7 @@ class PosShift extends Model
         'pos_business_day_id',
         'branch_id',
         'user_id',
+        'closed_by',
         'shift_number',
         'opening_float',
         'closing_cash_actual',
@@ -48,6 +49,22 @@ class PosShift extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function closedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'closed_by');
+    }
+
+    public function getDurationAttribute(): string
+    {
+        $start = $this->opened_at;
+        $end = $this->closed_at ?? now();
+        $diffMinutes = $start->diffInMinutes($end);
+        $hours = intdiv($diffMinutes, 60);
+        $mins = $diffMinutes % 60;
+        $formatted = $hours > 0 ? "{$hours}h {$mins}m" : "{$mins}m";
+        return $this->closed_at ? $formatted : "Active ({$formatted})";
     }
 
     public function orders(): HasMany

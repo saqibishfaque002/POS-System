@@ -99,14 +99,15 @@ class GoodReceivedNoteController extends Controller
             'status' => 'required|in:draft,issued,completed,cancelled'
         ]);
 
-        if ($goodReceivedNote->status === 'completed' && $validated['status'] !== 'completed') {
-            return back()->with('error', 'Cannot change status of a completed GRN.');
+        if ($goodReceivedNote->status === 'completed') {
+            return back()->with('error', 'Cannot change status of an already completed GRN.');
         }
 
         DB::transaction(function () use ($goodReceivedNote, $validated) {
+            $oldStatus = $goodReceivedNote->status;
             $goodReceivedNote->update(['status' => $validated['status']]);
 
-            if ($validated['status'] === 'completed') {
+            if ($validated['status'] === 'completed' && $oldStatus !== 'completed') {
                 foreach ($goodReceivedNote->items as $item) {
                     InventoryLedger::create([
                         'branch_id' => $goodReceivedNote->branch_id,

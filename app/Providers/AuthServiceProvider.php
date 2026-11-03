@@ -22,11 +22,11 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('is_admin', function ($user) {
-            return true; // Temporarily allow everyone until permissions are implemented
+            return in_array($user->role, ['admin', 'manager']);
         });
 
         Gate::define('is_cashier', function ($user) {
-            return true;
+            return in_array($user->role, ['admin', 'manager', 'multi branch manager', 'cashier']);
         });
     }
 }

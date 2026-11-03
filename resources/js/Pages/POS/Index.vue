@@ -45,6 +45,7 @@ const foodItems = ref([]);
 const propertyGroups = ref([]);
 const orderTypes = ref([]);
 const currentOrderTypeId = ref(null);
+const tableOrderTypeIds = ref([]);
 const parties = ref([]);
 const paymentTypes = ref([]);
 const floors = ref([]);
@@ -116,6 +117,7 @@ const fetchBootstrapData = async () => {
         foodItems.value = data.food_items || [];
         propertyGroups.value = data.property_groups || [];
         orderTypes.value = data.order_types || [];
+        tableOrderTypeIds.value = (data.table_order_type_ids || []).map(Number);
         currentOrderTypeId.value = data.order_types?.[0]?.id || null;
 
         // Auto-select initial party if available for default order type
@@ -135,12 +137,21 @@ const fetchBootstrapData = async () => {
 
         activeBusinessDay.value = data.active_business_day || null;
         activeShift.value = data.active_shift || null;
+
+        // Auto-prompt cashier if business day or shift is not open
+        if (!activeBusinessDay.value) {
+            isOpenBusinessDayModalOpen.value = true;
+        } else if (!activeShift.value) {
+            isStartShiftModalOpen.value = true;
+        }
     } catch (e) {
         console.error('Failed to bootstrap POS data:', e);
     } finally {
         loading.value = false;
     }
 };
+
+const isTerminalLocked = computed(() => !loading.value && (!activeBusinessDay.value || !activeShift.value));
 
 // Reload Catalog when Menu or Branch changes
 const reloadItems = async () => {
@@ -196,11 +207,14 @@ const selectedPartyId = computed({
     }
 });
 
-// Dine-In & Delivery detection
+// Table & Delivery detection
+const isTableRequired = computed(() => {
+    if (!currentOrderTypeId.value) return false;
+    return tableOrderTypeIds.value.map(Number).includes(Number(currentOrderTypeId.value));
+});
+
 const isDineIn = computed(() => {
-    const code = currentOrderType.value?.code?.toLowerCase() || '';
-    const name = currentOrderType.value?.name?.toLowerCase() || '';
-    return code === 'dine_in' || name.includes('dine');
+    return isTableRequired.value || currentOrderType.value?.code === 'dine_in' || currentOrderType.value?.name?.toLowerCase().includes('dine');
 });
 
 const isDelivery = computed(() => {
@@ -209,7 +223,19 @@ const isDelivery = computed(() => {
     return code === 'delivery' || name.includes('delivery');
 });
 
-// Auto-sync selectedParty and deliveryCharges whenever currentOrderTypeId changes
+// Explicit order type selection handler from cart segmented tabs
+const handleSelectOrderType = (orderType) => {
+    const otId = typeof orderType === 'object' ? orderType.id : orderType;
+    currentOrderTypeId.value = otId;
+    if (tableOrderTypeIds.value.map(Number).includes(Number(otId))) {
+        isTableModalOpen.value = true;
+    } else {
+        selectedTable.value = null;
+        isTableModalOpen.value = false;
+    }
+};
+
+// Auto-sync selectedParty, deliveryCharges, and table when currentOrderTypeId changes
 watch(currentOrderTypeId, (newTypeId) => {
     const ot = orderTypes.value.find(o => o.id == newTypeId);
     const validParties = ot?.parties || [];
@@ -228,6 +254,13 @@ watch(currentOrderTypeId, (newTypeId) => {
         deliveryCharges.value = Number(currentBranch.value?.delivery_charges || 0);
     } else {
         deliveryCharges.value = 0;
+    }
+
+    // Clear table if order type does not use tables
+    const requiresTable = tableOrderTypeIds.value.map(Number).includes(Number(newTypeId));
+    if (!requiresTable) {
+        selectedTable.value = null;
+        isTableModalOpen.value = false;
     }
 });
 
@@ -366,6 +399,8 @@ watch(subtotal, () => {
 
 // Item Selection from Catalog
 const handleSelectItem = (item) => {
+    if (!ensureShiftActive()) return;
+
     // If item has variations or property groups exist, open customizer modal
     if ((item.variations && item.variations.length > 0) || (propertyGroups.value && propertyGroups.value.length > 0)) {
         customizerItem.value = item;
@@ -446,12 +481,10 @@ const handleClearCart = () => {
 // Shift & Business Day Verification Guard
 const ensureShiftActive = () => {
     if (!activeBusinessDay.value) {
-        alert('A business day is not open for this branch. Please open the business day first.');
         isOpenBusinessDayModalOpen.value = true;
         return false;
     }
     if (!activeShift.value) {
-        alert('You do not have an active cashier shift open. Please start your shift before punching or settling orders.');
         isStartShiftModalOpen.value = true;
         return false;
     }
@@ -819,6 +852,9 @@ const handleKeydown = (e) => {
 
     if (isInput) return;
 
+    // If terminal is locked because Day or Shift is not open, block ordering shortcuts
+    if (isTerminalLocked.value) return;
+
     if (e.key === 'F1' || (e.altKey && e.key.toLowerCase() === 'h')) {
         e.preventDefault();
         handleHoldOrder();
@@ -859,12 +895,6 @@ onUnmounted(() => {
             v-model:currentBranchId="currentBranchId"
             :menus="menus"
             v-model:currentMenuId="currentMenuId"
-            :orderTypes="orderTypes"
-            v-model:currentOrderTypeId="currentOrderTypeId"
-            :availableParties="availableParties"
-            v-model:selectedPartyId="selectedPartyId"
-            :selectedTable="selectedTable"
-            :selectedCustomer="selectedCustomer"
             :submittedOrdersCount="submittedOrdersCount"
             :heldOrdersCount="activeOrders.length"
             :user="user"
@@ -873,8 +903,6 @@ onUnmounted(() => {
             :businessDateFormatted="businessDateFormatted"
             :activeBusinessDay="activeBusinessDay"
             :activeShift="activeShift"
-            @openTableModal="isTableModalOpen = true"
-            @openCustomerModal="isCustomerModalOpen = true"
             @openHeldOrdersModal="isHeldOrdersModalOpen = true"
             @openSubmittedOrdersModal="isSubmittedOrdersModalOpen = true"
             @openSettledOrdersModal="isSettledOrdersModalOpen = true"
@@ -886,7 +914,7 @@ onUnmounted(() => {
         />
 
         <!-- Main Body: Catalog (Left) + Cart (Right) -->
-        <div class="flex-1 flex overflow-hidden">
+        <div class="flex-1 flex overflow-hidden relative">
             <!-- Left: Catalog & Categories -->
             <MenuCatalog
                 :foodGroups="foodGroups"
@@ -900,6 +928,12 @@ onUnmounted(() => {
             <CartPanel
                 :cart="cart"
                 :orderType="currentOrderType"
+                :orderTypes="orderTypes"
+                :tableOrderTypeIds="tableOrderTypeIds"
+                v-model:currentOrderTypeId="currentOrderTypeId"
+                @selectOrderType="handleSelectOrderType"
+                :availableParties="availableParties"
+                v-model:selectedPartyId="selectedPartyId"
                 :selectedTable="selectedTable"
                 :selectedCustomer="selectedCustomer"
                 :selectedParty="selectedParty"
@@ -932,7 +966,64 @@ onUnmounted(() => {
                 @openFocModal="isFocModalOpen = true"
                 @openDiscountModal="isDiscountModalOpen = true"
                 @removeDiscount="appliedDiscount = null"
+                @openTableModal="isTableModalOpen = true"
+                @openCustomerModal="isCustomerModalOpen = true"
             />
+
+            <!-- Terminal Workspace Gatekeeper (Blocks all catalog & cart activity until Day and Shift are open) -->
+            <div
+                v-if="isTerminalLocked"
+                class="absolute inset-0 z-30 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+            >
+                <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center flex flex-col items-center space-y-4">
+                    <!-- Icon badge -->
+                    <div
+                        class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-lg"
+                        :class="!activeBusinessDay ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-600 border border-rose-200 dark:border-rose-800' : 'bg-amber-100 dark:bg-amber-950/80 text-amber-600 border border-amber-200 dark:border-amber-800'"
+                    >
+                        <span v-if="!activeBusinessDay">📅</span>
+                        <span v-else>🟡</span>
+                    </div>
+
+                    <!-- Status pill -->
+                    <div
+                        class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center space-x-1.5"
+                        :class="!activeBusinessDay ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'"
+                    >
+                        <span class="w-2 h-2 rounded-full animate-ping" :class="!activeBusinessDay ? 'bg-rose-500' : 'bg-amber-500'"></span>
+                        <span>{{ !activeBusinessDay ? 'Business Day Closed' : 'No Active Shift' }}</span>
+                    </div>
+
+                    <!-- Title & Description -->
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-slate-100">
+                            {{ !activeBusinessDay ? 'Branch Business Day Required' : 'Cashier Shift Required' }}
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                            <template v-if="!activeBusinessDay">
+                                The accounting business day for <strong class="text-slate-700 dark:text-slate-300">{{ currentBranch?.name || 'this branch' }}</strong> has not been opened yet. You must open the business day before starting cashier shifts and taking orders.
+                            </template>
+                            <template v-else>
+                                You do not have an active shift for today (<strong class="text-slate-700 dark:text-slate-300">{{ businessDateFormatted }}</strong>). Please start your shift and record your opening cash float to begin taking orders.
+                            </template>
+                        </p>
+                    </div>
+
+                    <!-- Primary Action Button -->
+                    <button
+                        type="button"
+                        @click="!activeBusinessDay ? (isOpenBusinessDayModalOpen = true) : (isStartShiftModalOpen = true)"
+                        class="w-full pos-btn-primary !py-3 !px-6 text-sm font-black flex items-center justify-center space-x-2 shadow-lg cursor-pointer hover:scale-[1.02] transition-transform"
+                    >
+                        <span v-if="!activeBusinessDay">📅 Open Business Day</span>
+                        <span v-else>🟡 Start Shift & Enter Float</span>
+                    </button>
+
+                    <p class="text-[11px] text-slate-400 dark:text-slate-500">
+                        All ordering and punching activities are locked until the required day and shift are open.
+                    </p>
+                </div>
+            </div>
         </div>
 
         <!-- ================= MODALS ================= -->

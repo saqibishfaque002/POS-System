@@ -14,6 +14,7 @@ class Branch extends Model
         'is_active' => 'boolean',
         'delivery_charges' => 'decimal:2',
         'service_charge_value' => 'decimal:2',
+        'table_order_types' => 'array',
     ];
 
     public function company() {

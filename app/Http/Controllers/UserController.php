@@ -76,6 +76,16 @@ class UserController extends Controller
 
         if (!isset($validated['is_active'])) $validated['is_active'] = false;
 
+        $currentUser = auth()->user();
+        if ($currentUser->role !== 'admin') {
+            if ($user->role === 'admin') {
+                abort(403, 'Unauthorized to modify an administrator account.');
+            }
+            if (isset($validated['role']) && $validated['role'] === 'admin') {
+                abort(403, 'Only administrators can assign the administrator role.');
+            }
+        }
+
         if ($request->filled('password')) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
@@ -95,9 +105,15 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        $currentUser = auth()->user();
+
         // Prevent deleting oneself
-        if (auth()->id() === $user->id) {
+        if ($currentUser->id === $user->id) {
             return back()->withErrors(['message' => 'You cannot delete yourself.']);
+        }
+
+        if ($currentUser->role !== 'admin' && $user->role === 'admin') {
+            abort(403, 'Unauthorized to delete an administrator account.');
         }
 
         $user->delete();

@@ -51,6 +51,12 @@ class SettingController extends Controller
 
     public function updateGroup(Request $request)
     {
+        $validated = $request->validate([
+            'group' => 'required|string|max:50',
+            'logo' => 'nullable|file|mimes:jpeg,png,webp,jpg|max:2048',
+            'favicon' => 'nullable|file|mimes:png,ico|max:512',
+        ]);
+
         $group = $request->input('group');
         $data = $request->except(['_token', 'group', '_method']);
 

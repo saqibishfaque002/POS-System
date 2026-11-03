@@ -58,6 +58,17 @@ class PosBusinessDay extends Model
         return $this->status === 'open';
     }
 
+    public function getDurationAttribute(): string
+    {
+        $start = $this->opened_at;
+        $end = $this->closed_at ?? now();
+        $diffMinutes = $start->diffInMinutes($end);
+        $hours = intdiv($diffMinutes, 60);
+        $mins = $diffMinutes % 60;
+        $formatted = $hours > 0 ? "{$hours}h {$mins}m" : "{$mins}m";
+        return $this->closed_at ? $formatted : "Active ({$formatted})";
+    }
+
     public static function getActiveForBranch(int $branchId): ?self
     {
         return static::where('branch_id', $branchId)

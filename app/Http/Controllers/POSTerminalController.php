@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use App\Models\PosOrder;
 use App\Models\PosOrderItem;
@@ -27,6 +28,7 @@ use App\Models\InventoryLedger;
 use App\Models\PosBusinessDay;
 use App\Models\PosShift;
 use App\Models\User;
+use App\Models\Setting;
 
 class POSTerminalController extends Controller
 {
@@ -65,9 +67,16 @@ class POSTerminalController extends Controller
             $branchId = $user?->branch_id ?? Branch::where('is_active', true)->value('id');
         }
 
+        // Branch authorization check (VULN-08)
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $branchId)->exists()) {
+                abort(403, 'Unauthorized access to branch data.');
+            }
+        }
+
         $branches = Branch::where('is_active', true)->get([
             'id', 'name', 'phone', 'address', 
-            'delivery_charges', 'service_charge_type', 'service_charge_value'
+            'delivery_charges', 'service_charge_type', 'service_charge_value', 'table_order_types'
         ]);
         $currentBranch = Branch::with(['paymentTypes' => function ($q) {
             $q->where('payment_types.is_active', true)
@@ -204,6 +213,25 @@ class POSTerminalController extends Controller
         $businessDay = $activeBusinessDay ? $activeBusinessDay->business_date->format('l') : now()->format('l');
         $businessDateFormatted = $activeBusinessDay ? $activeBusinessDay->business_date->format('d M Y') : now()->format('d M Y');
 
+        // Resolve order types that require dining table selection (Branch Override -> Global POS Setting -> Dine-in default)
+        $branchTableOrderTypes = $currentBranch?->table_order_types;
+        if ($branchTableOrderTypes !== null && is_array($branchTableOrderTypes)) {
+            $tableOrderTypeIds = array_values(array_map('intval', $branchTableOrderTypes));
+        } else {
+            $globalSetting = Setting::where('key', 'table_required_order_types')->value('value');
+            if ($globalSetting !== null && $globalSetting !== '') {
+                $decoded = is_string($globalSetting) ? json_decode($globalSetting, true) : $globalSetting;
+                $tableOrderTypeIds = is_array($decoded) ? array_values(array_map('intval', $decoded)) : [];
+            } else {
+                $tableOrderTypeIds = OrderType::where('is_active', true)
+                    ->where(fn($q) => $q->where('code', 'dine_in')->orWhere('name', 'like', '%dine%'))
+                    ->pluck('id')
+                    ->map(fn($id) => (int)$id)
+                    ->values()
+                    ->toArray();
+            }
+        }
+
         return response()->json([
             'branches' => $branches,
             'current_branch' => $currentBranch,
@@ -213,6 +241,7 @@ class POSTerminalController extends Controller
             'food_items' => $foodItems,
             'property_groups' => $propertyGroups,
             'order_types' => $orderTypes,
+            'table_order_type_ids' => $tableOrderTypeIds,
             'parties' => $parties,
             'payment_types' => $paymentTypes,
             'floors' => $floors,
@@ -345,11 +374,110 @@ class POSTerminalController extends Controller
 
         return DB::transaction(function () use ($validated, $request) {
             $user = Auth::user();
+
+            // Branch authorization check (VULN-08)
+            if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+                if ($user->branches()->exists() && !$user->branches()->where('branches.id', $validated['branch_id'])->exists()) {
+                    abort(403, 'Unauthorized access to branch data.');
+                }
+            }
+
             $orderId = $validated['order_id'] ?? null;
             $isPaid = (bool)($validated['is_paid'] ?? false);
             $isKot = (bool)($validated['is_kot'] ?? false);
             $isFoc = (bool)($validated['is_foc'] ?? false);
             $focReason = $validated['foc_reason'] ?? 'Complimentary VIP';
+
+            // FOC Authorization Verification (VULN-04)
+            if ($isFoc && !in_array($user->role, ['admin', 'manager'])) {
+                $managerPin = $request->input('manager_pin') ?? $request->input('manager_password');
+                $managerEmail = $request->input('manager_email');
+                $manager = null;
+                if ($managerEmail) {
+                    $manager = User::where('email', $managerEmail)->whereIn('role', ['admin', 'manager'])->where('is_active', true)->first();
+                }
+                if (!$manager || !Hash::check($managerPin, $manager->password)) {
+                    abort(403, 'Manager authorization required for Free of Charge (FOC) orders.');
+                }
+            }
+
+            // Server-Side Item Price & Total Tampering Prevention (VULN-02)
+            $computedSubtotal = 0;
+            $verifiedItems = [];
+
+            foreach ($validated['items'] as $itemData) {
+                $foodItem = FoodItem::with(['branches', 'menus', 'variations'])->find($itemData['food_item_id']);
+                if (!$foodItem) {
+                    abort(422, "Food item #{$itemData['food_item_id']} not found.");
+                }
+
+                $catalogUnitPrice = null;
+                if (!empty($itemData['variation_id'])) {
+                    $itemVariation = FoodItemVariation::where('food_item_id', $foodItem->id)
+                        ->where('variation_id', $itemData['variation_id'])
+                        ->first();
+                    if ($itemVariation && (float)$itemVariation->price > 0) {
+                        $catalogUnitPrice = (float)$itemVariation->price;
+                    }
+                }
+
+                if ($catalogUnitPrice === null) {
+                    $catalogUnitPrice = $foodItem->getEffectivePriceFor($validated['branch_id'], $request->get('menu_id'));
+                    if ($catalogUnitPrice <= 0 && (float)$foodItem->base_price > 0) {
+                        $catalogUnitPrice = (float)$foodItem->base_price;
+                    }
+                }
+
+                $unitPrice = (float)$itemData['unit_price'];
+                if ($catalogUnitPrice > 0 && !in_array($user->role, ['admin', 'manager'])) {
+                    if ($unitPrice < round($catalogUnitPrice - 0.05, 2)) {
+                        abort(422, "Price tampering detected for item '{$foodItem->name}'. Catalog price: Rs. " . number_format($catalogUnitPrice, 2));
+                    }
+                }
+
+                $extraPropsPrice = 0;
+                $verifiedProps = [];
+                if (!empty($itemData['properties'])) {
+                    foreach ($itemData['properties'] as $prop) {
+                        $propExtra = (float)($prop['extra_price'] ?? 0);
+                        if (!empty($prop['property_item_id'])) {
+                            $propItem = PropertyItem::find($prop['property_item_id']);
+                            if ($propItem && (float)$propItem->extra_price > 0) {
+                                $propExtra = (float)$propItem->extra_price;
+                            }
+                        }
+                        $propQty = (int)($prop['quantity'] ?? 1);
+                        $extraPropsPrice += ($propExtra * $propQty);
+                        $verifiedProps[] = array_merge($prop, ['extra_price' => $propExtra]);
+                    }
+                }
+
+                $itemQty = (int)$itemData['quantity'];
+                $itemTotal = ($unitPrice + $extraPropsPrice) * $itemQty;
+                $computedSubtotal += $itemTotal;
+
+                $verifiedItems[] = array_merge($itemData, [
+                    'unit_price' => $unitPrice,
+                    'total_price' => $itemTotal,
+                    'properties' => $verifiedProps,
+                ]);
+            }
+
+            $discountVal = (float)($validated['discount_value'] ?? 0);
+            $taxAmt = (float)($validated['tax_amount'] ?? 0);
+            $servCharges = (float)($validated['service_charges'] ?? 0);
+            $delCharges = (float)($validated['delivery_charges'] ?? 0);
+            $expectedGrandTotal = max(0, $computedSubtotal - $discountVal + $taxAmt + $servCharges + $delCharges);
+
+            if (!in_array($user->role, ['admin', 'manager']) && round((float)$validated['subtotal'], 2) < round($computedSubtotal - 0.05, 2)) {
+                abort(422, 'Order subtotal does not match item totals.');
+            }
+
+            if (!$isFoc && !in_array($user->role, ['admin', 'manager'])) {
+                if (round((float)$validated['grand_total'], 2) < round($expectedGrandTotal - 0.05, 2)) {
+                    abort(422, 'Order grand total does not match calculated totals.');
+                }
+            }
 
             $activeBusinessDay = PosBusinessDay::where('branch_id', $validated['branch_id'])
                 ->where('status', 'open')
@@ -405,14 +533,14 @@ class POSTerminalController extends Controller
             $order->party_id = $validated['party_id'] ?? null;
             $order->customer_id = $validated['customer_id'] ?? null;
             
-            $order->subtotal = $validated['subtotal'];
+            $order->subtotal = !in_array($user->role, ['admin', 'manager']) ? $computedSubtotal : $validated['subtotal'];
             $order->discount_id = $validated['discount_id'] ?? null;
             $order->discount_type = $validated['discount_type'] ?? null;
             $order->discount_value = $validated['discount_value'] ?? 0;
             $order->tax_amount = $validated['tax_amount'];
             $order->service_charges = $validated['service_charges'] ?? 0;
             $order->delivery_charges = $validated['delivery_charges'] ?? 0;
-            $order->grand_total = $validated['grand_total'];
+            $order->grand_total = (!in_array($user->role, ['admin', 'manager']) && !$isFoc) ? $expectedGrandTotal : $validated['grand_total'];
             $order->notes = $validated['notes'] ?? null;
             $order->delivery_address = $validated['delivery_address'] ?? null;
             $order->rider_name = $validated['rider_name'] ?? null;
@@ -458,7 +586,7 @@ class POSTerminalController extends Controller
             $order->save();
 
             // Save order items & properties
-            foreach ($validated['items'] as $itemData) {
+            foreach ($verifiedItems as $itemData) {
                 $orderItem = $order->items()->create([
                     'food_item_id' => $itemData['food_item_id'],
                     'variation_id' => $itemData['variation_id'] ?? null,
@@ -549,6 +677,13 @@ class POSTerminalController extends Controller
      */
     public function settlePayment(Request $request, PosOrder $order)
     {
+        $user = Auth::user();
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $order->branch_id)->exists()) {
+                abort(403, 'Unauthorized access to orders in this branch.');
+            }
+        }
+
         if ($order->status === 'completed' && $order->payment_status === 'paid') {
             return response()->json([
                 'success' => false,
@@ -573,8 +708,7 @@ class POSTerminalController extends Controller
             'delivery_charges' => 'nullable|numeric|min:0',
         ]);
 
-        return DB::transaction(function () use ($validated, $order, $request) {
-            $user = Auth::user();
+        return DB::transaction(function () use ($validated, $order, $request, $user) {
             $activeShift = PosShift::where('branch_id', $order->branch_id)
                 ->where('user_id', $user->id)
                 ->where('status', 'open')
@@ -618,20 +752,14 @@ class POSTerminalController extends Controller
                 $order->delivery_address = $validated['delivery_address'];
             }
             if ($request->filled('delivery_charges')) {
-                $order->delivery_charges = $validated['delivery_charges'];
+                $oldDel = (float)$order->delivery_charges;
+                $newDel = (float)$validated['delivery_charges'];
+                $order->delivery_charges = $newDel;
+                $order->grand_total = max(0, (float)$order->grand_total - $oldDel + $newDel);
             }
 
-            if ($request->has('discount_id')) {
-                $order->discount_id = $request->input('discount_id');
-            }
-            if ($request->has('discount_type')) {
-                $order->discount_type = $request->input('discount_type');
-            }
-            if ($request->has('discount_value')) {
-                $order->discount_value = $request->input('discount_value');
-            }
-            if ($request->has('grand_total')) {
-                $order->grand_total = $request->input('grand_total');
+            if (round($totalPaid, 2) < round((float)$order->grand_total - 0.05, 2)) {
+                abort(422, 'Insufficient payment amount tendered to settle order.');
             }
 
             $order->tendered_amount = $totalTendered;
@@ -653,16 +781,35 @@ class POSTerminalController extends Controller
         });
     }
 
-    /**
-     * Process an existing order as Free of Charge (FOC)
-     */
     public function focOrder(Request $request, PosOrder $order)
     {
+        $user = Auth::user();
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $order->branch_id)->exists()) {
+                abort(403, 'Unauthorized access to orders in this branch.');
+            }
+        }
+
         $validated = $request->validate([
             'foc_reason' => 'required|string|max:255',
+            'manager_email' => 'nullable|string|email',
+            'manager_pin' => 'nullable|string',
+            'manager_password' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($validated, $order) {
+        if (!in_array($user->role, ['admin', 'manager'])) {
+            $managerPin = $request->input('manager_pin') ?? $request->input('manager_password');
+            $managerEmail = $request->input('manager_email');
+            $manager = null;
+            if ($managerEmail) {
+                $manager = User::where('email', $managerEmail)->whereIn('role', ['admin', 'manager'])->where('is_active', true)->first();
+            }
+            if (!$manager || !Hash::check($managerPin, $manager->password)) {
+                abort(403, 'Manager authorization required for Free of Charge (FOC) orders.');
+            }
+        }
+
+        return DB::transaction(function () use ($validated, $order, $user) {
             $focReason = $validated['foc_reason'];
 
             $order->discount_type = 'percentage';
@@ -717,6 +864,13 @@ class POSTerminalController extends Controller
      */
     public function printKot(PosOrder $order)
     {
+        $user = Auth::user();
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $order->branch_id)->exists()) {
+                abort(403, 'Unauthorized access to orders in this branch.');
+            }
+        }
+
         if (!$order->kot_number) {
             $todayKotCount = PosOrder::where('branch_id', $order->branch_id)
                 ->whereNotNull('kot_number')
@@ -742,6 +896,13 @@ class POSTerminalController extends Controller
      */
     public function voidOrder(Request $request, PosOrder $order)
     {
+        $user = Auth::user();
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $order->branch_id)->exists()) {
+                abort(403, 'Unauthorized access to orders in this branch.');
+            }
+        }
+
         $validated = $request->validate([
             'reason' => 'required|string|max:500',
         ]);
@@ -793,10 +954,16 @@ class POSTerminalController extends Controller
      */
     public function getSubmittedOrders(Request $request)
     {
+        $user = Auth::user();
         $branchId = (int)$request->get('branch_id');
         if (!$branchId) {
-            $user = Auth::user();
             $branchId = $user->branch_id ?? Branch::where('is_active', true)->value('id');
+        }
+
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $branchId)->exists()) {
+                abort(403, 'Unauthorized access to branch orders.');
+            }
         }
 
         $query = PosOrder::where('branch_id', $branchId)
@@ -860,10 +1027,16 @@ class POSTerminalController extends Controller
      */
     public function getSettledOrders(Request $request)
     {
+        $user = Auth::user();
         $branchId = (int)$request->get('branch_id');
         if (!$branchId) {
-            $user = Auth::user();
             $branchId = $user->branch_id ?? Branch::where('is_active', true)->value('id');
+        }
+
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $branchId)->exists()) {
+                abort(403, 'Unauthorized access to branch orders.');
+            }
         }
 
         $query = PosOrder::where('branch_id', $branchId)
@@ -1131,9 +1304,18 @@ class POSTerminalController extends Controller
     {
         $validated = $request->validate([
             'branch_id' => 'required|exists:branches,id',
-            'business_date' => 'required|date',
+            'business_date' => 'nullable|date',
             'notes' => 'nullable|string|max:500',
         ]);
+
+        $user = Auth::user();
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $validated['branch_id'])->exists()) {
+                abort(403, 'Unauthorized access to branch.');
+            }
+        }
+
+        $todayDate = now()->toDateString();
 
         $existing = PosBusinessDay::where('branch_id', $validated['branch_id'])
             ->where('status', 'open')
@@ -1149,7 +1331,7 @@ class POSTerminalController extends Controller
 
         $businessDay = PosBusinessDay::create([
             'branch_id' => $validated['branch_id'],
-            'business_date' => $validated['business_date'],
+            'business_date' => $todayDate, // Strictly locked to current date to prevent backdating/forward dating
             'status' => 'open',
             'opened_by' => Auth::id(),
             'opened_at' => now(),
@@ -1185,6 +1367,17 @@ class POSTerminalController extends Controller
             'force' => 'nullable|boolean',
         ]);
 
+        $user = Auth::user();
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $validated['branch_id'])->exists()) {
+                abort(403, 'Unauthorized access to branch.');
+            }
+        }
+
+        if (!empty($validated['force']) && !in_array($user->role, ['admin', 'manager'])) {
+            abort(403, 'Only managers and administrators are authorized to force-close active shifts.');
+        }
+
         $activeDay = PosBusinessDay::where('branch_id', $validated['branch_id'])
             ->where('status', 'open')
             ->latest('id')
@@ -1218,11 +1411,12 @@ class POSTerminalController extends Controller
                 $expected = $metrics['expected_cash'];
                 $openShift->update([
                     'closing_cash_expected' => $expected,
-                    'closing_cash_actual' => $expected,
-                    'cash_variance' => 0,
+                    'closing_cash_actual' => null,
+                    'cash_variance' => null,
                     'status' => 'closed',
                     'closed_at' => now(),
-                    'notes' => ($openShift->notes ? $openShift->notes . ' | ' : '') . 'Auto-closed on Day End',
+                    'closed_by' => Auth::id(),
+                    'notes' => ($openShift->notes ? $openShift->notes . ' | ' : '') . 'Auto-closed on Day End (Unreconciled)',
                 ]);
             }
         }
@@ -1263,6 +1457,11 @@ class POSTerminalController extends Controller
         ]);
 
         $user = Auth::user();
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $validated['branch_id'])->exists()) {
+                abort(403, 'Unauthorized access to branch.');
+            }
+        }
 
         // Must have an active open business day for this branch
         $activeDay = PosBusinessDay::where('branch_id', $validated['branch_id'])
@@ -1349,6 +1548,16 @@ class POSTerminalController extends Controller
             ], 422);
         }
 
+        if ($shift->user_id !== $user->id && !in_array($user->role, ['admin', 'manager'])) {
+            abort(403, 'Unauthorized to close another user\'s shift.');
+        }
+
+        if (!in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $shift->branch_id)->exists()) {
+                abort(403, 'Unauthorized access to shifts in this branch.');
+            }
+        }
+
         if ($shift->status === 'closed') {
             return response()->json([
                 'success' => false,
@@ -1372,6 +1581,7 @@ class POSTerminalController extends Controller
             'cash_variance' => $variance,
             'status' => 'closed',
             'closed_at' => now(),
+            'closed_by' => $user->id,
             'notes' => ($shift->notes ? $shift->notes . ' | ' : '') . ($validated['notes'] ?? ''),
         ]);
 
@@ -1412,6 +1622,12 @@ class POSTerminalController extends Controller
             ], 404);
         }
 
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $shift->branch_id)->exists()) {
+                abort(403, 'Unauthorized access to shift summary.');
+            }
+        }
+
         $summary = $this->calculateShiftMetrics($shift);
 
         return response()->json([
@@ -1421,21 +1637,42 @@ class POSTerminalController extends Controller
     }
 
     /**
-     * Admin Shift Monitor API query with filters and KPI totals
+     * Admin Shift Monitor API query with date range, closed_by, duration, and KPI totals
      */
     public function getShiftMonitor(Request $request)
     {
+        $user = Auth::user();
         $branchId = $request->get('branch_id');
         $date = $request->get('date');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
         $status = $request->get('status');
         $userId = $request->get('user_id');
+        $search = $request->get('search');
 
-        $query = PosShift::with(['user', 'branch', 'businessDay']);
+        $query = PosShift::with(['user', 'closedBy', 'branch', 'businessDay']);
+
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($branchId && $user->branches()->exists() && !$user->branches()->where('branches.id', $branchId)->exists()) {
+                abort(403, 'Unauthorized access to branch data.');
+            }
+            if (!$branchId && $user->branches()->exists()) {
+                $query->whereIn('branch_id', $user->branches->pluck('id'));
+            }
+        }
 
         if ($branchId) {
             $query->where('branch_id', $branchId);
         }
-        if ($date) {
+
+        if ($startDate && $endDate) {
+            $query->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween(DB::raw('DATE(opened_at)'), [$startDate, $endDate])
+                  ->orWhereHas('businessDay', function ($bq) use ($startDate, $endDate) {
+                      $bq->whereBetween('business_date', [$startDate, $endDate]);
+                  });
+            });
+        } elseif ($date) {
             $query->where(function ($q) use ($date) {
                 $q->whereDate('opened_at', $date)
                   ->orWhereHas('businessDay', function ($bq) use ($date) {
@@ -1443,29 +1680,50 @@ class POSTerminalController extends Controller
                   });
             });
         }
+
         if ($status && $status !== 'all') {
             $query->where('status', $status);
         }
+
         if ($userId) {
-            $query->where('user_id', $userId);
+            $query->where(function ($q) use ($userId) {
+                $q->where('user_id', $userId)
+                  ->orWhere('closed_by', $userId);
+            });
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('shift_number', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhereHas('user', fn($uq) => $uq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('closedBy', fn($cq) => $cq->where('name', 'like', "%{$search}%"));
+            });
         }
 
         $shifts = $query->latest('id')->get();
 
         $shiftsData = $shifts->map(function ($s) {
             $metrics = $this->calculateShiftMetrics($s);
+            $closedByName = $s->closedBy?->name ?? ($s->status === 'closed' ? ($s->user?->name ?? 'System') : '-');
+
             return [
                 'id' => $s->id,
                 'shift_number' => $s->shift_number,
                 'branch_id' => $s->branch_id,
                 'branch_name' => $s->branch?->name,
                 'user_id' => $s->user_id,
-                'cashier_name' => $s->user?->name,
+                'cashier_name' => $s->user?->name ?? 'Unknown',
+                'closed_by_id' => $s->closed_by,
+                'closed_by_name' => $closedByName,
                 'business_date' => $s->businessDay?->business_date?->format('d M Y') ?? $s->opened_at->format('d M Y'),
                 'opened_at' => $s->opened_at->toDateTimeString(),
+                'opened_at_formatted' => $s->opened_at->format('d M Y, h:i A'),
                 'opened_at_time' => $s->opened_at->format('h:i A'),
                 'closed_at' => $s->closed_at?->toDateTimeString(),
+                'closed_at_formatted' => $s->closed_at ? $s->closed_at->format('d M Y, h:i A') : 'Still Open (Active)',
                 'closed_at_time' => $s->closed_at?->format('h:i A'),
+                'duration' => $s->duration,
                 'status' => $s->status,
                 'opening_float' => (float)$s->opening_float,
                 'closing_cash_actual' => $s->closing_cash_actual !== null ? (float)$s->closing_cash_actual : null,
@@ -1496,9 +1754,163 @@ class POSTerminalController extends Controller
     }
 
     /**
-     * Render the Admin Shift Monitor Inertia page
+     * Day Management API query with date range, opened_by, closed_by, duration, and KPI totals
      */
-    public function renderShiftMonitor(Request $request)
+    public function getBusinessDaysData(Request $request)
+    {
+        $user = Auth::user();
+        $branchId = $request->get('branch_id');
+        $date = $request->get('date');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
+        $status = $request->get('status');
+        $userId = $request->get('user_id');
+        $search = $request->get('search');
+
+        $query = PosBusinessDay::with(['branch', 'openedBy', 'closedBy', 'shifts.user']);
+
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($branchId && $user->branches()->exists() && !$user->branches()->where('branches.id', $branchId)->exists()) {
+                abort(403, 'Unauthorized access to branch data.');
+            }
+            if (!$branchId && $user->branches()->exists()) {
+                $query->whereIn('branch_id', $user->branches->pluck('id'));
+            }
+        }
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        if ($startDate && $endDate) {
+            $query->whereBetween('business_date', [$startDate, $endDate]);
+        } elseif ($date) {
+            $query->whereDate('business_date', $date);
+        }
+
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        if ($userId) {
+            $query->where(function ($q) use ($userId) {
+                $q->where('opened_by', $userId)
+                  ->orWhere('closed_by', $userId)
+                  ->orWhereHas('shifts', function ($sq) use ($userId) {
+                      $sq->where('user_id', $userId)->orWhere('closed_by', $userId);
+                  });
+            });
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('notes', 'like', "%{$search}%")
+                  ->orWhereHas('openedBy', fn($uq) => $uq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('closedBy', fn($cq) => $cq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('branch', fn($bq) => $bq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $days = $query->latest('business_date')->latest('id')->get();
+
+        $daysData = $days->map(function ($day) {
+            $metrics = $this->calculateBusinessDayMetrics($day);
+
+            return [
+                'id' => $day->id,
+                'branch_id' => $day->branch_id,
+                'branch_name' => $day->branch?->name,
+                'business_date' => $day->business_date->toDateString(),
+                'business_date_formatted' => $day->business_date->format('d M Y'),
+                'business_day' => $day->business_date->format('l'),
+                'status' => $day->status,
+                'opened_at' => $day->opened_at->toDateTimeString(),
+                'opened_at_formatted' => $day->opened_at->format('d M Y, h:i A'),
+                'opened_at_time' => $day->opened_at->format('h:i A'),
+                'opened_by_id' => $day->opened_by,
+                'opened_by_name' => $day->openedBy?->name ?? 'System',
+                'closed_at' => $day->closed_at?->toDateTimeString(),
+                'closed_at_formatted' => $day->closed_at ? $day->closed_at->format('d M Y, h:i A') : 'Still Open (Active)',
+                'closed_at_time' => $day->closed_at?->format('h:i A'),
+                'closed_by_id' => $day->closed_by,
+                'closed_by_name' => $day->closedBy?->name ?? ($day->status === 'closed' ? 'System' : '-'),
+                'duration' => $day->duration,
+                'shifts_count' => $day->shifts->count(),
+                'open_shifts_count' => $day->shifts->where('status', 'open')->count(),
+                'closed_shifts_count' => $day->shifts->where('status', 'closed')->count(),
+                'orders_count' => $metrics['orders_count'],
+                'completed_orders_count' => $metrics['completed_orders_count'],
+                'gross_sales' => $metrics['gross_sales'],
+                'cash_collected' => $metrics['cash_collected'],
+                'total_variance' => $metrics['total_variance'],
+                'notes' => $day->notes,
+            ];
+        });
+
+        $kpis = [
+            'total_days' => $daysData->count(),
+            'open_days' => $daysData->where('status', 'open')->count(),
+            'closed_days' => $daysData->where('status', 'closed')->count(),
+            'total_shifts' => $daysData->sum('shifts_count'),
+            'total_sales' => round($daysData->sum('gross_sales'), 2),
+            'total_variance' => round($daysData->sum('total_variance'), 2),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'days' => $daysData,
+            'kpis' => $kpis,
+        ]);
+    }
+
+    /**
+     * Get complete Z-Report summary for a business day
+     */
+    public function getBusinessDaySummary(Request $request)
+    {
+        $dayId = $request->get('day_id');
+        $day = PosBusinessDay::with(['branch', 'openedBy', 'closedBy'])->find($dayId);
+
+        if (!$day) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Business day not found.',
+            ], 404);
+        }
+
+        $user = Auth::user();
+        if ($user && !in_array($user->role, ['admin', 'manager', 'multi branch manager'])) {
+            if ($user->branches()->exists() && !$user->branches()->where('branches.id', $day->branch_id)->exists()) {
+                abort(403, 'Unauthorized access to business day summary.');
+            }
+        }
+
+        $zReport = $this->calculateBusinessDayMetrics($day);
+
+        return response()->json([
+            'success' => true,
+            'business_day' => [
+                'id' => $day->id,
+                'branch_id' => $day->branch_id,
+                'branch_name' => $day->branch?->name,
+                'business_date' => $day->business_date->format('d M Y'),
+                'business_day' => $day->business_date->format('l'),
+                'status' => $day->status,
+                'opened_at' => $day->opened_at->format('d M Y, h:i A'),
+                'opened_by' => $day->openedBy?->name ?? 'System',
+                'closed_at' => $day->closed_at ? $day->closed_at->format('d M Y, h:i A') : 'Still Open (Active)',
+                'closed_by' => $day->closedBy?->name ?? ($day->status === 'closed' ? 'System' : '-'),
+                'duration' => $day->duration,
+                'notes' => $day->notes,
+            ],
+            'z_report' => $zReport,
+        ]);
+    }
+
+    /**
+     * Render the Day & Shift Management Inertia page
+     */
+    public function renderWorkPeriods(Request $request)
     {
         $branches = Branch::where('is_active', true)->get(['id', 'name']);
         $users = User::where('is_active', true)->get(['id', 'name']);
@@ -1507,6 +1919,14 @@ class POSTerminalController extends Controller
             'branches' => $branches,
             'users' => $users,
         ]);
+    }
+
+    /**
+     * Render the Admin Shift Monitor Inertia page (alias for renderWorkPeriods)
+     */
+    public function renderShiftMonitor(Request $request)
+    {
+        return $this->renderWorkPeriods($request);
     }
 
     /**

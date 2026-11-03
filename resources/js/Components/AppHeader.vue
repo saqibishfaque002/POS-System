@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
+import { useTheme } from '@/Composables/useTheme';
 
 const props = defineProps({
     title: {
@@ -26,19 +27,8 @@ const userInitials = computed(() => {
     return authUser.value.name.substring(0, 2).toUpperCase();
 });
 
-// Theme Management
-const isDark = ref(false);
-
-const toggleTheme = () => {
-    isDark.value = !isDark.value;
-    if (isDark.value) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-    }
-};
+// Theme Management via Shared Composable
+const { isDark, toggleTheme } = useTheme();
 
 // Profile Dropdown state
 const isProfileDropdownOpen = ref(false);
@@ -55,19 +45,6 @@ const closeDropdownOnOutsideClick = (e) => {
 };
 
 onMounted(() => {
-    // Sync dark mode from document or localStorage
-    if (
-        document.documentElement.classList.contains('dark') ||
-        localStorage.theme === 'dark' ||
-        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    ) {
-        isDark.value = true;
-        document.documentElement.classList.add('dark');
-    } else {
-        isDark.value = false;
-        document.documentElement.classList.remove('dark');
-    }
-
     window.addEventListener('click', closeDropdownOnOutsideClick);
 });
 

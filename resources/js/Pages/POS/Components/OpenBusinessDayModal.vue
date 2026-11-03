@@ -11,6 +11,12 @@ const props = defineProps({
 const emit = defineEmits(['close', 'dayOpened']);
 
 const todayStr = new Date().toISOString().slice(0, 10);
+const todayFormatted = new Intl.DateTimeFormat('en-US', { 
+    weekday: 'long', 
+    day: '2-digit', 
+    month: 'short', 
+    year: 'numeric' 
+}).format(new Date());
 const businessDate = ref(todayStr);
 const notes = ref('');
 const submitting = ref(false);
@@ -101,16 +107,29 @@ const handleOpenDay = async () => {
                     </div>
                 </div>
 
-                <!-- Business Date Input -->
+                <!-- Business Date Display (Locked to Today) -->
                 <div>
                     <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Accounting Business Date <span class="text-rose-500">*</span>
                     </label>
-                    <input
-                        type="date"
-                        v-model="businessDate"
-                        class="w-full text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
-                    />
+                    <div class="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-cyan-950 text-indigo-600 dark:text-cyan-400 flex items-center justify-center text-sm font-bold">
+                                📅
+                            </div>
+                            <div>
+                                <div class="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">Business Date</div>
+                                <div class="text-xs font-black text-slate-800 dark:text-slate-100">{{ todayFormatted }}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-200/60 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-[11px] font-bold">
+                            <span>🔒</span>
+                            <span>Locked to Today</span>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+                        The business day is automatically locked to the current calendar date to prevent backdating or premature order punching.
+                    </p>
                 </div>
 
                 <!-- Notes / Remarks -->
