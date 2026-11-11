@@ -67,31 +67,31 @@ const handleOpenDay = async () => {
 <template>
     <div
         v-if="isOpen"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+        class="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
     >
-        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden flex flex-col">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
             <!-- Modal Header -->
-            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-indigo-50 dark:bg-cyan-950/40">
+            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-indigo-50 dark:bg-cyan-950/40 shrink-0">
                 <div class="flex items-center space-x-2.5">
-                    <div class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-cyan-900/60 text-indigo-700 dark:text-cyan-300 flex items-center justify-center text-sm font-black">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-cyan-900/60 text-indigo-700 dark:text-cyan-300 flex items-center justify-center text-sm font-black shrink-0">
                         📅
                     </div>
                     <div>
-                        <h3 class="text-sm font-black text-slate-800 dark:text-slate-100">Open Business Day</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ branchName || 'Branch' }}</p>
+                        <h3 class="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">Open Business Day</h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">{{ branchName || 'Branch' }}</p>
                     </div>
                 </div>
                 <button
                     type="button"
                     @click="emit('close')"
-                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg text-lg leading-none transition-colors"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg text-lg leading-none transition-colors cursor-pointer"
                 >
                     ✕
                 </button>
             </div>
 
             <!-- Modal Body -->
-            <div class="p-5 space-y-4">
+            <div class="p-4 sm:p-5 space-y-3.5 sm:space-y-4 overflow-y-auto flex-1">
                 <div
                     v-if="errorMessage"
                     class="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-start space-x-2"

@@ -269,20 +269,23 @@ const viewShiftsForDay = (day) => {
 
             <main class="mt-8 space-y-6">
                 <!-- Navigation Tabs: Day Management vs Shift Management -->
-                <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-3">
-                    <div class="flex space-x-2 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-3 gap-3">
+                    <div class="flex flex-col sm:flex-row w-full sm:w-auto space-y-1 sm:space-y-0 sm:space-x-2 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
                         <button
                             type="button"
                             @click="activeTab = 'days'"
                             :class="[
-                                'px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center space-x-2 cursor-pointer',
+                                'px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-between sm:justify-start space-x-2 cursor-pointer',
                                 activeTab === 'days'
                                     ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-cyan-400 shadow-sm'
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             ]"
                         >
-                            <span>📅</span>
-                            <span>Day Management (Business Days)</span>
+                            <span class="flex items-center space-x-1.5">
+                                <span>📅</span>
+                                <span class="sm:hidden">Day Records</span>
+                                <span class="hidden sm:inline">Day Management (Business Days)</span>
+                            </span>
                             <span class="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 dark:bg-cyan-950/60 text-indigo-700 dark:text-cyan-300 font-black">
                                 {{ days.length }}
                             </span>
@@ -292,14 +295,17 @@ const viewShiftsForDay = (day) => {
                             type="button"
                             @click="activeTab = 'shifts'"
                             :class="[
-                                'px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center space-x-2 cursor-pointer',
+                                'px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-between sm:justify-start space-x-2 cursor-pointer',
                                 activeTab === 'shifts'
                                     ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-cyan-400 shadow-sm'
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             ]"
                         >
-                            <span>⏱️</span>
-                            <span>Shift Management (Cashier Work Periods)</span>
+                            <span class="flex items-center space-x-1.5">
+                                <span>⏱️</span>
+                                <span class="sm:hidden">Shift Records</span>
+                                <span class="hidden sm:inline">Shift Management (Cashier Work Periods)</span>
+                            </span>
                             <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-black">
                                 {{ shifts.length }}
                             </span>
@@ -316,8 +322,8 @@ const viewShiftsForDay = (day) => {
                 <!-- KPI Stat Cards (Dynamic based on selected tab) -->
                 <transition mode="out-in" enter-active-class="transition duration-150 ease-out" enter-from-class="opacity-0 translate-y-1" leave-active-class="transition duration-100 ease-in" leave-to-class="opacity-0 -translate-y-1">
                     <!-- Day Management KPIs -->
-                    <div v-if="activeTab === 'days'" key="day-kpis" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                    <div v-if="activeTab === 'days'" key="day-kpis" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
+                        <div class="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
                             <span class="text-[10px] uppercase font-bold text-slate-400">Total Business Days</span>
                             <div class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1">
                                 {{ dayKpis.total_days }}
@@ -371,15 +377,15 @@ const viewShiftsForDay = (day) => {
                     </div>
 
                     <!-- Shift Management KPIs -->
-                    <div v-else key="shift-kpis" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                    <div v-else key="shift-kpis" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
+                        <div class="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
                             <span class="text-[10px] uppercase font-bold text-slate-400">Total Shifts</span>
                             <div class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1">
                                 {{ shiftKpis.total_shifts }}
                             </div>
                         </div>
 
-                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                        <div class="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
                             <span class="text-[10px] uppercase font-bold text-emerald-500">Active Shifts</span>
                             <div class="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1 flex items-center space-x-1.5">
                                 <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -387,28 +393,28 @@ const viewShiftsForDay = (day) => {
                             </div>
                         </div>
 
-                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                        <div class="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
                             <span class="text-[10px] uppercase font-bold text-slate-400">Closed Shifts</span>
                             <div class="text-xl font-black text-slate-600 dark:text-slate-300 mt-1">
                                 {{ shiftKpis.closed_shifts }}
                             </div>
                         </div>
 
-                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                        <div class="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
                             <span class="text-[10px] uppercase font-bold text-slate-400">Tickets Punched</span>
                             <div class="text-xl font-black text-slate-800 dark:text-slate-100 mt-1">
                                 {{ shiftKpis.total_orders }}
                             </div>
                         </div>
 
-                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                        <div class="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
                             <span class="text-[10px] uppercase font-bold text-indigo-500 dark:text-cyan-400">Gross Sales</span>
                             <div class="text-xl font-black text-indigo-600 dark:text-cyan-400 mt-1">
                                 Rs. {{ formatPrice(shiftKpis.total_sales) }}
                             </div>
                         </div>
 
-                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                        <div class="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
                             <span class="text-[10px] uppercase font-bold text-slate-400">Net Till Variance</span>
                             <div
                                 :class="[
@@ -495,7 +501,7 @@ const viewShiftsForDay = (day) => {
                         </div>
 
                         <!-- Date Range Inputs -->
-                        <div class="flex items-center space-x-2">
+                        <div class="flex flex-wrap items-center gap-2">
                             <div class="flex items-center space-x-1">
                                 <span class="text-[10px] font-bold uppercase text-slate-400">From:</span>
                                 <input
@@ -503,7 +509,7 @@ const viewShiftsForDay = (day) => {
                                     v-model="startDate"
                                     @change="datePreset = 'custom'"
                                     :disabled="datePreset === 'all'"
-                                    class="text-xs font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-1 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 disabled:opacity-40"
+                                    class="text-xs font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2 py-1 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 disabled:opacity-40"
                                 />
                             </div>
                             <div class="flex items-center space-x-1">
@@ -513,7 +519,7 @@ const viewShiftsForDay = (day) => {
                                     v-model="endDate"
                                     @change="datePreset = 'custom'"
                                     :disabled="datePreset === 'all'"
-                                    class="text-xs font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-1 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 disabled:opacity-40"
+                                    class="text-xs font-semibold bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2 py-1 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 disabled:opacity-40"
                                 />
                             </div>
                         </div>

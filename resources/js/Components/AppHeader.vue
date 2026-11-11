@@ -32,6 +32,7 @@ const { isDark, toggleTheme } = useTheme();
 
 // Profile Dropdown state
 const isProfileDropdownOpen = ref(false);
+const isMobileNavOpen = ref(false);
 const dropdownRef = ref(null);
 
 const toggleProfileDropdown = () => {
@@ -346,8 +347,45 @@ const currentModuleType = computed(() => {
                     </transition>
                 </div>
 
+                <!-- Mobile Module Navigation Toggle (< 1024px) -->
+                <button
+                    @click="isMobileNavOpen = !isMobileNavOpen"
+                    type="button"
+                    class="lg:hidden p-2 sm:p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/60 text-slate-600 dark:text-slate-300 transition-all duration-200 focus:outline-none cursor-pointer"
+                    :title="isMobileNavOpen ? 'Close Navigation' : 'Open Navigation'"
+                >
+                    <svg v-if="!isMobileNavOpen" class="w-4 h-4 sm:w-4.5 sm:h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <svg v-else class="w-4 h-4 sm:w-4.5 sm:h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
             </div>
 
+        </div>
+
+        <!-- Mobile Navigation Drawer (< 1024px) -->
+        <div
+            v-if="isMobileNavOpen"
+            class="lg:hidden mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 animate-fade-in"
+        >
+            <Link
+                v-for="mod in navModules"
+                :key="mod.name"
+                :href="route(mod.route)"
+                @click="isMobileNavOpen = false"
+                class="p-2.5 text-xs font-bold rounded-xl transition-all duration-200 flex items-center gap-2 select-none cursor-pointer"
+                :class="[
+                    isModuleActive(mod)
+                        ? 'bg-indigo-50 dark:bg-cyan-950/60 text-indigo-700 dark:text-[#06b6d4] border border-indigo-200/80 dark:border-cyan-800 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200/50 dark:border-slate-700/50'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full" :class="isModuleActive(mod) ? 'bg-indigo-600 dark:bg-[#06b6d4]' : 'bg-slate-400'"></span>
+                <span>{{ mod.name }}</span>
+            </Link>
         </div>
     </header>
 </template>

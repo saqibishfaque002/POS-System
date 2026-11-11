@@ -476,6 +476,7 @@ const handleClearCart = () => {
     } else {
         selectedParty.value = null;
     }
+    mobileActiveView.value = 'catalog';
 };
 
 // Shift & Business Day Verification Guard
@@ -775,6 +776,7 @@ const loadOrderIntoCart = (order) => {
             quantity: p.quantity,
         })),
     }));
+    mobileActiveView.value = 'cart';
 };
 
 // Resume Held Order
@@ -875,6 +877,15 @@ const handleKeydown = (e) => {
     }
 };
 
+// Responsive Mobile View State ('catalog' | 'cart')
+const mobileActiveView = ref('catalog');
+const cartItemsCount = computed(() => {
+    return cart.value.reduce((total, item) => total + (Number(item.quantity) || 1), 0);
+});
+const formatPrice = (val) => {
+    return Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 onMounted(() => {
     fetchBootstrapData();
     window.addEventListener('keydown', handleKeydown);
@@ -903,6 +914,9 @@ onUnmounted(() => {
             :businessDateFormatted="businessDateFormatted"
             :activeBusinessDay="activeBusinessDay"
             :activeShift="activeShift"
+            :mobileActiveView="mobileActiveView"
+            :cartItemsCount="cartItemsCount"
+            @update:mobileActiveView="mobileActiveView = $event"
             @openHeldOrdersModal="isHeldOrdersModalOpen = true"
             @openSubmittedOrdersModal="isSubmittedOrdersModalOpen = true"
             @openSettledOrdersModal="isSettledOrdersModalOpen = true"
@@ -916,59 +930,109 @@ onUnmounted(() => {
         <!-- Main Body: Catalog (Left) + Cart (Right) -->
         <div class="flex-1 flex overflow-hidden relative">
             <!-- Left: Catalog & Categories -->
-            <MenuCatalog
-                :foodGroups="foodGroups"
-                :foodItems="foodItems"
-                :propertyGroups="propertyGroups"
-                :loading="catalogLoading"
-                @selectItem="handleSelectItem"
-            />
+            <div
+                class="flex-1 flex flex-col h-full overflow-hidden"
+                :class="[
+                    mobileActiveView === 'catalog' ? 'flex w-full' : 'hidden lg:flex'
+                ]"
+            >
+                <MenuCatalog
+                    :foodGroups="foodGroups"
+                    :foodItems="foodItems"
+                    :propertyGroups="propertyGroups"
+                    :loading="catalogLoading"
+                    @selectItem="handleSelectItem"
+                />
+
+                <!-- Mobile Floating Cart Action Bar (Visible only on mobile in catalog view when cart has items) -->
+                <div
+                    v-if="cart.length > 0"
+                    class="lg:hidden p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-xl shrink-0 flex items-center justify-between gap-3"
+                >
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-600 dark:bg-cyan-600 text-white flex items-center justify-center font-bold relative shadow-xs">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            <span class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
+                                {{ cartItemsCount }}
+                            </span>
+                        </div>
+                        <div class="flex flex-col text-left">
+                            <span class="text-xs font-black text-slate-800 dark:text-white">
+                                {{ cartItemsCount }} {{ cartItemsCount === 1 ? 'Item' : 'Items' }}
+                            </span>
+                            <span class="text-xs font-black text-indigo-600 dark:text-cyan-400">
+                                Rs. {{ formatPrice(grandTotal) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        @click="mobileActiveView = 'cart'"
+                        class="pos-btn-primary !py-2.5 !px-5 text-xs font-black flex items-center space-x-1.5 shadow-md active:scale-95 cursor-pointer"
+                    >
+                        <span>View Cart</span>
+                        <span>→</span>
+                    </button>
+                </div>
+            </div>
 
             <!-- Right: Cart & Settle Panel -->
-            <CartPanel
-                :cart="cart"
-                :orderType="currentOrderType"
-                :orderTypes="orderTypes"
-                :tableOrderTypeIds="tableOrderTypeIds"
-                v-model:currentOrderTypeId="currentOrderTypeId"
-                @selectOrderType="handleSelectOrderType"
-                :availableParties="availableParties"
-                v-model:selectedPartyId="selectedPartyId"
-                :selectedTable="selectedTable"
-                :selectedCustomer="selectedCustomer"
-                :selectedParty="selectedParty"
-                :selectedDiscount="appliedDiscount"
-                :tokenNumber="editingOrderToken"
-                :taxPercentage="currentTaxPercentage"
-                :deliveryCharges="deliveryCharges"
-                @update:deliveryCharges="deliveryCharges = $event"
-                :riderName="riderName"
-                @update:riderName="riderName = $event"
-                :deliveryAddress="deliveryAddress"
-                @update:deliveryAddress="deliveryAddress = $event"
-                :subtotal="subtotal"
-                :discountAmount="discountAmount"
-                :serviceChargeAmount="serviceChargeAmount"
-                :serviceChargeLabel="serviceChargeLabel"
-                :taxAmount="taxAmount"
-                :grandTotal="grandTotal"
-                :editingOrderId="editingOrderId"
-                :submitting="submitting"
-                :businessDate="businessDate"
-                :businessDay="businessDay"
-                :businessDateFormatted="businessDateFormatted"
-                @updateQuantity="handleUpdateQuantity"
-                @removeItem="handleRemoveItem"
-                @clearCart="handleClearCart"
-                @openPaymentModal="isPaymentModalOpen = true"
-                @sendKot="handleSendKot"
-                @holdOrder="handleHoldOrder"
-                @openFocModal="isFocModalOpen = true"
-                @openDiscountModal="isDiscountModalOpen = true"
-                @removeDiscount="appliedDiscount = null"
-                @openTableModal="isTableModalOpen = true"
-                @openCustomerModal="isCustomerModalOpen = true"
-            />
+            <div
+                class="h-full"
+                :class="[
+                    mobileActiveView === 'cart' ? 'flex flex-1 w-full' : 'hidden lg:flex shrink-0'
+                ]"
+            >
+                <CartPanel
+                    :isMobileView="mobileActiveView === 'cart'"
+                    @backToCatalog="mobileActiveView = 'catalog'"
+                    :cart="cart"
+                    :orderType="currentOrderType"
+                    :orderTypes="orderTypes"
+                    :tableOrderTypeIds="tableOrderTypeIds"
+                    v-model:currentOrderTypeId="currentOrderTypeId"
+                    @selectOrderType="handleSelectOrderType"
+                    :availableParties="availableParties"
+                    v-model:selectedPartyId="selectedPartyId"
+                    :selectedTable="selectedTable"
+                    :selectedCustomer="selectedCustomer"
+                    :selectedParty="selectedParty"
+                    :selectedDiscount="appliedDiscount"
+                    :tokenNumber="editingOrderToken"
+                    :taxPercentage="currentTaxPercentage"
+                    :deliveryCharges="deliveryCharges"
+                    @update:deliveryCharges="deliveryCharges = $event"
+                    :riderName="riderName"
+                    @update:riderName="riderName = $event"
+                    :deliveryAddress="deliveryAddress"
+                    @update:deliveryAddress="deliveryAddress = $event"
+                    :subtotal="subtotal"
+                    :discountAmount="discountAmount"
+                    :serviceChargeAmount="serviceChargeAmount"
+                    :serviceChargeLabel="serviceChargeLabel"
+                    :taxAmount="taxAmount"
+                    :grandTotal="grandTotal"
+                    :editingOrderId="editingOrderId"
+                    :submitting="submitting"
+                    :businessDate="businessDate"
+                    :businessDay="businessDay"
+                    :businessDateFormatted="businessDateFormatted"
+                    @updateQuantity="handleUpdateQuantity"
+                    @removeItem="handleRemoveItem"
+                    @clearCart="handleClearCart"
+                    @openPaymentModal="isPaymentModalOpen = true"
+                    @sendKot="handleSendKot"
+                    @holdOrder="handleHoldOrder"
+                    @openFocModal="isFocModalOpen = true"
+                    @openDiscountModal="isDiscountModalOpen = true"
+                    @removeDiscount="appliedDiscount = null"
+                    @openTableModal="isTableModalOpen = true"
+                    @openCustomerModal="isCustomerModalOpen = true"
+                />
+            </div>
 
             <!-- Terminal Workspace Gatekeeper (Blocks all catalog & cart activity until Day and Shift are open) -->
             <div

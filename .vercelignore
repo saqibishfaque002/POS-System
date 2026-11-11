@@ -1,0 +1,13 @@
+.git
+.github
+.agents
+.env*
+!.env.example
+tests
+phpunit.xml
+*.log
+start-tunnel.sh
+cloudflared
+*.sql
+*.dump
+*.sqlite

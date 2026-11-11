@@ -129,21 +129,21 @@ const formatPrice = (val) => {
 </script>
 
 <template>
-    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs select-none">
+    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/60 backdrop-blur-xs select-none">
         <div class="bg-white dark:bg-slate-900 w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
             <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
                 <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-sm font-black text-slate-900 dark:text-white">
+                        <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
                             Settle & Complete Bill
                         </h3>
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                        <p class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
                             Select payment method and confirm transaction
                         </p>
                     </div>
@@ -151,14 +151,14 @@ const formatPrice = (val) => {
                 <button
                     type="button"
                     @click="emit('close')"
-                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg text-sm"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg text-sm cursor-pointer"
                 >
                     ✕
                 </button>
             </div>
 
             <!-- Total Banner -->
-            <div class="px-6 py-4 bg-emerald-500/10 dark:bg-emerald-950/30 border-b border-emerald-500/20 flex items-center justify-between">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 bg-emerald-500/10 dark:bg-emerald-950/30 border-b border-emerald-500/20 flex items-center justify-between">
                 <div>
                     <span class="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300 tracking-wider">
                         Total Amount Due
@@ -184,7 +184,7 @@ const formatPrice = (val) => {
             </div>
 
             <!-- Body -->
-            <div class="p-6 overflow-y-auto space-y-5 flex-1">
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1">
                 <!-- Standard Single Payment Mode -->
                 <div v-if="!isSplitMode" class="space-y-4">
                     <!-- Payment Methods Grid -->
@@ -364,11 +364,11 @@ const formatPrice = (val) => {
             </div>
 
             <!-- Footer -->
-            <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
                 <button
                     type="button"
                     @click="emit('close')"
-                    class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800"
+                    class="px-3 sm:px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-800 cursor-pointer"
                 >
                     Cancel
                 </button>
@@ -376,7 +376,7 @@ const formatPrice = (val) => {
                     type="button"
                     @click="handleConfirm"
                     :disabled="submitting || (isSplitMode && totalSplitPaid < grandTotal) || (isCashPayment && cashTendered < grandTotal)"
-                    class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-lg active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center space-x-2"
+                    class="px-4 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-lg active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center space-x-2 cursor-pointer"
                 >
                     <span>{{ submitting ? 'Processing...' : 'Complete & Print Receipt' }}</span>
                 </button>

@@ -75,6 +75,10 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    isMobileView: {
+        type: Boolean,
+        default: false
+    },
 });
 
 const emit = defineEmits([
@@ -95,6 +99,7 @@ const emit = defineEmits([
     'openTableModal',
     'openCustomerModal',
     'selectOrderType',
+    'backToCatalog',
 ]);
 
 const formatPrice = (val) => {
@@ -121,7 +126,22 @@ const handleOrderTypeClick = (ot) => {
 </script>
 
 <template>
-    <div class="w-80 md:w-96 lg:w-[420px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full shrink-0 select-none shadow-lg z-10">
+    <div class="w-full lg:w-80 xl:w-96 2xl:w-[420px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full select-none shadow-lg z-10">
+        <!-- Mobile Navigation Header (Shown only on mobile when viewing cart) -->
+        <div v-if="isMobileView" class="lg:hidden px-3.5 py-2.5 bg-indigo-50 dark:bg-cyan-950/60 border-b border-indigo-100 dark:border-cyan-900/60 flex items-center justify-between shrink-0">
+            <button
+                type="button"
+                @click="emit('backToCatalog')"
+                class="text-xs font-black text-indigo-700 dark:text-cyan-300 flex items-center space-x-1.5 cursor-pointer hover:underline"
+            >
+                <span class="text-base leading-none">←</span>
+                <span>Back to Menu / Add Items</span>
+            </button>
+            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                {{ cart.length }} {{ cart.length === 1 ? 'item' : 'items' }}
+            </span>
+        </div>
+
         <!-- Cart Header: Order Info, Order Type, Party & Business Date -->
         <div class="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 flex flex-col gap-2.5 shrink-0">
             <!-- Order Title & Clear button -->

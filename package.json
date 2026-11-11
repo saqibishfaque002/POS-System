@@ -3,7 +3,9 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "vercel-build": "vite build",
+        "tunnel": "npx localtunnel --port 8000 --subdomain pos-staging"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^1.0.0",
