@@ -20,8 +20,7 @@ const searchQuery = ref('');
 const selectedOrderTypeId = ref('');
 const selectedStatus = ref('');
 
-const getInitialDate = () => props.businessDate || new Date().toLocaleDateString('en-CA');
-const selectedDate = ref(getInitialDate());
+const selectedDate = ref('');
 
 const voidingOrderId = ref(null);
 const voidReason = ref('');
@@ -55,16 +54,7 @@ watch(() => props.isOpen, (newVal) => {
     if (newVal) {
         voidingOrderId.value = null;
         voidReason.value = '';
-        if (!selectedDate.value) {
-            selectedDate.value = getInitialDate();
-        }
         fetchOrders();
-    }
-});
-
-watch(() => props.businessDate, (newVal) => {
-    if (newVal && !selectedDate.value) {
-        selectedDate.value = newVal;
     }
 });
 
@@ -78,13 +68,17 @@ watch([selectedOrderTypeId, selectedStatus, selectedDate], () => {
     fetchOrders();
 });
 
+const yesterdayDate = computed(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toLocaleDateString('en-CA');
+});
+
 const setQuickDate = (type) => {
     if (type === 'today') {
         selectedDate.value = props.businessDate || new Date().toLocaleDateString('en-CA');
     } else if (type === 'yesterday') {
-        const d = new Date();
-        d.setDate(d.getDate() - 1);
-        selectedDate.value = d.toLocaleDateString('en-CA');
+        selectedDate.value = yesterdayDate.value;
     } else if (type === 'all') {
         selectedDate.value = '';
     }
@@ -235,9 +229,21 @@ defineExpose({
                 <div class="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
                     <button
                         type="button"
+                        @click="setQuickDate('all')"
+                        :class="[
+                            'px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer',
+                            selectedDate === ''
+                                ? 'bg-indigo-600 text-white dark:bg-cyan-600 shadow-xs'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                        ]"
+                    >
+                        All Active
+                    </button>
+                    <button
+                        type="button"
                         @click="setQuickDate('today')"
                         :class="[
-                            'px-2.5 py-1 text-xs font-bold rounded-lg transition-all',
+                            'px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer',
                             selectedDate === (props.businessDate || new Date().toLocaleDateString('en-CA'))
                                 ? 'bg-indigo-600 text-white dark:bg-cyan-600 shadow-xs'
                                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -248,21 +254,14 @@ defineExpose({
                     <button
                         type="button"
                         @click="setQuickDate('yesterday')"
-                        class="px-2.5 py-1 text-xs font-bold rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 transition-all"
-                    >
-                        Yesterday
-                    </button>
-                    <button
-                        type="button"
-                        @click="setQuickDate('all')"
                         :class="[
-                            'px-2.5 py-1 text-xs font-bold rounded-lg transition-all',
-                            selectedDate === ''
+                            'px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer',
+                            selectedDate === yesterdayDate
                                 ? 'bg-indigo-600 text-white dark:bg-cyan-600 shadow-xs'
                                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                         ]"
                     >
-                        All Dates
+                        Yesterday
                     </button>
                 </div>
 

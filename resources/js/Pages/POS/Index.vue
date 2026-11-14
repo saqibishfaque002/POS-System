@@ -68,6 +68,9 @@ const editingOrderId = ref(null);
 const editingOrderToken = ref(null);
 const appliedDiscount = ref(null);
 const activeCardBin = ref('');
+const isOrderSettled = ref(false);
+const settledOrder = ref(null);
+const isLoadingOrder = ref(false);
 
 // Modals
 const isCustomizerOpen = ref(false);
@@ -237,6 +240,8 @@ const handleSelectOrderType = (orderType) => {
 
 // Auto-sync selectedParty, deliveryCharges, and table when currentOrderTypeId changes
 watch(currentOrderTypeId, (newTypeId) => {
+    if (isLoadingOrder.value) return;
+
     const ot = orderTypes.value.find(o => o.id == newTypeId);
     const validParties = ot?.parties || [];
     if (validParties.length > 0) {
@@ -401,6 +406,11 @@ watch(subtotal, () => {
 const handleSelectItem = (item) => {
     if (!ensureShiftActive()) return;
 
+    // If terminal is currently displaying a settled order, seamlessly start a new cart
+    if (isOrderSettled.value) {
+        handleClearCart();
+    }
+
     // If item has variations or property groups exist, open customizer modal
     if ((item.variations && item.variations.length > 0) || (propertyGroups.value && propertyGroups.value.length > 0)) {
         customizerItem.value = item;
@@ -425,6 +435,11 @@ const handleSelectItem = (item) => {
 
 // Add to Cart
 const handleAddToCart = (newItem) => {
+    // If terminal is currently displaying a settled order, seamlessly start a new cart
+    if (isOrderSettled.value) {
+        handleClearCart();
+    }
+
     // Check if duplicate item (same item, variation, notes and properties) exists
     const existingIndex = cart.value.findIndex(i => 
         i.food_item_id === newItem.food_item_id &&
@@ -471,12 +486,16 @@ const handleClearCart = () => {
     deliveryCharges.value = 0;
     riderName.value = '';
     deliveryAddress.value = '';
+    isOrderSettled.value = false;
+    settledOrder.value = null;
     if (availableParties.value.length > 0) {
         selectedParty.value = availableParties.value[0];
     } else {
         selectedParty.value = null;
     }
-    mobileActiveView.value = 'catalog';
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        mobileActiveView.value = 'catalog';
+    }
 };
 
 // Shift & Business Day Verification Guard
@@ -676,7 +695,38 @@ const handleConfirmPayment = async (paymentData) => {
             currentReceiptType.value = 'invoice';
             isReceiptModalOpen.value = true;
 
-            handleClearCart();
+            // Retain settled order and its details in the right panel (Requirement 5 & 6)
+            isOrderSettled.value = true;
+            settledOrder.value = response.data.order;
+            editingOrderId.value = response.data.order.id;
+            editingOrderToken.value = response.data.order.token_number;
+            selectedCustomer.value = response.data.order.customer || selectedCustomer.value;
+            selectedTable.value = response.data.order.table || selectedTable.value;
+            selectedParty.value = response.data.order.party || selectedParty.value;
+            deliveryCharges.value = Number(response.data.order.delivery_charges || 0);
+
+            // Re-sync cart items from settled order if returned with items
+            if (response.data.order.items && response.data.order.items.length > 0) {
+                cart.value = response.data.order.items.map(item => ({
+                    food_item_id: item.food_item_id,
+                    name: item.food_item?.name || 'Item',
+                    food_group_id: item.food_item?.food_group_id,
+                    variation_id: item.variation_id,
+                    variation_name: item.variation?.name,
+                    unit_price: Number(item.unit_price),
+                    quantity: item.quantity,
+                    total_price: Number(item.total_price),
+                    notes: item.notes,
+                    properties: (item.properties || []).map(p => ({
+                        property_group_id: p.property_item?.property_group_id,
+                        property_item_id: p.property_item_id,
+                        property_name: p.property_name,
+                        extra_price: Number(p.extra_price),
+                        quantity: p.quantity,
+                    })),
+                }));
+            }
+
             fetchBootstrapData();
         }
     } catch (e) {
@@ -747,6 +797,10 @@ const handleCardBinEntered = (bin) => {
 
 // Helper to populate order into cart
 const loadOrderIntoCart = (order) => {
+    isLoadingOrder.value = true;
+    isOrderSettled.value = false;
+    settledOrder.value = null;
+
     editingOrderId.value = order.id;
     editingOrderToken.value = order.token_number;
     currentOrderTypeId.value = order.order_type_id;
@@ -756,7 +810,12 @@ const loadOrderIntoCart = (order) => {
     deliveryCharges.value = Number(order.delivery_charges || 0);
     riderName.value = order.rider_name || '';
     deliveryAddress.value = order.delivery_address || '';
-    appliedDiscount.value = order.discount || null;
+    appliedDiscount.value = order.discount || (Number(order.discount_value) > 0 ? {
+        id: order.discount_id || null,
+        name: 'Order Discount',
+        type: order.discount_type || 'fixed',
+        value: Number(order.discount_value),
+    } : null);
 
     cart.value = (order.items || []).map(item => ({
         food_item_id: item.food_item_id,
@@ -776,7 +835,13 @@ const loadOrderIntoCart = (order) => {
             quantity: p.quantity,
         })),
     }));
-    mobileActiveView.value = 'cart';
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        mobileActiveView.value = 'cart';
+    }
+
+    setTimeout(() => {
+        isLoadingOrder.value = false;
+    }, 50);
 };
 
 // Resume Held Order
@@ -804,6 +869,15 @@ const handlePrintKotFromSubmitted = (order) => {
     currentReceiptOrder.value = order;
     currentReceiptType.value = 'kot';
     isReceiptModalOpen.value = true;
+};
+
+// Reprint Receipt from current settled order
+const handleReprintCurrentReceipt = () => {
+    if (settledOrder.value) {
+        currentReceiptOrder.value = settledOrder.value;
+        currentReceiptType.value = 'invoice';
+        isReceiptModalOpen.value = true;
+    }
 };
 
 // Reprint Bill from Settled Orders
@@ -931,9 +1005,9 @@ onUnmounted(() => {
         <div class="flex-1 flex overflow-hidden relative">
             <!-- Left: Catalog & Categories -->
             <div
-                class="flex-1 flex flex-col h-full overflow-hidden"
+                class="flex-col h-full overflow-hidden lg:flex lg:flex-1"
                 :class="[
-                    mobileActiveView === 'catalog' ? 'flex w-full' : 'hidden lg:flex'
+                    mobileActiveView === 'catalog' ? 'flex flex-1 w-full' : 'hidden'
                 ]"
             >
                 <MenuCatalog
@@ -944,26 +1018,32 @@ onUnmounted(() => {
                     @selectItem="handleSelectItem"
                 />
 
-                <!-- Mobile Floating Cart Action Bar (Visible only on mobile in catalog view when cart has items) -->
+                <!-- Mobile Floating Cart Action Bar (Visible only on mobile in catalog view when cart has items or order is settled) -->
                 <div
-                    v-if="cart.length > 0"
+                    v-if="cart.length > 0 || isOrderSettled"
                     class="lg:hidden p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-xl shrink-0 flex items-center justify-between gap-3"
                 >
                     <div class="flex items-center space-x-2.5">
-                        <div class="w-10 h-10 rounded-xl bg-indigo-600 dark:bg-cyan-600 text-white flex items-center justify-center font-bold relative shadow-xs">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div
+                            class="w-10 h-10 rounded-xl flex items-center justify-center font-bold relative shadow-xs"
+                            :class="isOrderSettled ? 'bg-emerald-600 text-white' : 'bg-indigo-600 dark:bg-cyan-600 text-white'"
+                        >
+                            <svg v-if="!isOrderSettled" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
-                            <span class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
+                            <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span v-if="!isOrderSettled" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
                                 {{ cartItemsCount }}
                             </span>
                         </div>
                         <div class="flex flex-col text-left">
                             <span class="text-xs font-black text-slate-800 dark:text-white">
-                                {{ cartItemsCount }} {{ cartItemsCount === 1 ? 'Item' : 'Items' }}
+                                {{ isOrderSettled ? 'Order #' + (settledOrder?.order_number || editingOrderToken || 'Settled') : (cartItemsCount + (cartItemsCount === 1 ? ' Item' : ' Items')) }}
                             </span>
-                            <span class="text-xs font-black text-indigo-600 dark:text-cyan-400">
-                                Rs. {{ formatPrice(grandTotal) }}
+                            <span class="text-xs font-black" :class="isOrderSettled ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-cyan-400'">
+                                {{ isOrderSettled ? 'PAID & SETTLED' : ('Rs. ' + formatPrice(grandTotal)) }}
                             </span>
                         </div>
                     </div>
@@ -972,8 +1052,9 @@ onUnmounted(() => {
                         type="button"
                         @click="mobileActiveView = 'cart'"
                         class="pos-btn-primary !py-2.5 !px-5 text-xs font-black flex items-center space-x-1.5 shadow-md active:scale-95 cursor-pointer"
+                        :class="{ '!bg-emerald-600 hover:!bg-emerald-700': isOrderSettled }"
                     >
-                        <span>View Cart</span>
+                        <span>{{ isOrderSettled ? 'View Order' : 'View Cart' }}</span>
                         <span>→</span>
                     </button>
                 </div>
@@ -981,9 +1062,9 @@ onUnmounted(() => {
 
             <!-- Right: Cart & Settle Panel -->
             <div
-                class="h-full"
+                class="h-full lg:flex lg:flex-none lg:shrink-0 lg:w-80 xl:w-96 2xl:w-[420px]"
                 :class="[
-                    mobileActiveView === 'cart' ? 'flex flex-1 w-full' : 'hidden lg:flex shrink-0'
+                    mobileActiveView === 'cart' ? 'flex flex-1 w-full' : 'hidden'
                 ]"
             >
                 <CartPanel
@@ -1020,9 +1101,13 @@ onUnmounted(() => {
                     :businessDate="businessDate"
                     :businessDay="businessDay"
                     :businessDateFormatted="businessDateFormatted"
+                    :isOrderSettled="isOrderSettled"
+                    :settledOrder="settledOrder"
                     @updateQuantity="handleUpdateQuantity"
                     @removeItem="handleRemoveItem"
                     @clearCart="handleClearCart"
+                    @startNewOrder="handleClearCart"
+                    @reprintReceipt="handleReprintCurrentReceipt"
                     @openPaymentModal="isPaymentModalOpen = true"
                     @sendKot="handleSendKot"
                     @holdOrder="handleHoldOrder"
