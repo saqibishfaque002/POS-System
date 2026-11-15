@@ -69,8 +69,8 @@ return [
             'host' => env('DB_TEST_HOST', env('DB_HOST', '127.0.0.1')),
             'port' => env('DB_TEST_PORT', env('DB_PORT', '3306')),
             'database' => env('DB_TEST_DATABASE', 'pos_db_test'),
-            'username' => env('DB_TEST_USERNAME', env('DB_USERNAME', 'saqib')),
-            'password' => env('DB_TEST_PASSWORD', env('DB_PASSWORD', 'Saqib@12345!')),
+            'username' => env('DB_TEST_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('DB_TEST_PASSWORD', env('DB_PASSWORD', '')),
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
@@ -95,7 +95,7 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => 'prefer',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
         'sqlsrv' => [

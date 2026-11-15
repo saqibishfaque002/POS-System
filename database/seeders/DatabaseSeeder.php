@@ -14,7 +14,9 @@ class DatabaseSeeder extends Seeder
         // 1. Seed complete master data (Reference, configuration, catalog, recipes)
         $this->call(MasterDataSeeder::class);
 
-        // 2. Seed test actors and realistic scenarios (Users across roles, shifts, orders, stock)
-        $this->call(SecurityTestDataSeeder::class);
+        // 2. Seed test actors and realistic scenarios (Only in local or testing environments)
+        if (app()->environment('local', 'testing')) {
+            $this->call(SecurityTestDataSeeder::class);
+        }
     }
 }

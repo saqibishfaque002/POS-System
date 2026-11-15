@@ -98,15 +98,15 @@ const formatPrice = (val) => {
 </script>
 
 <template>
-    <div v-if="isOpen && item" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs select-none">
+    <div v-if="isOpen && item" class="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/60 backdrop-blur-xs select-none">
         <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
             <!-- Modal Header -->
-            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between bg-slate-50/70 dark:bg-slate-800/40">
+            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between bg-slate-50/70 dark:bg-slate-800/40">
                 <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-cyan-400 bg-indigo-50 dark:bg-cyan-950/60 px-2 py-0.5 rounded">
                         {{ item.food_group_name || 'Customize Item' }}
                     </span>
-                    <h3 class="text-base font-black text-slate-900 dark:text-white mt-1">
+                    <h3 class="text-sm sm:text-base font-black text-slate-900 dark:text-white mt-1">
                         {{ item.name }}
                     </h3>
                     <p v-if="item.description" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
@@ -116,14 +116,14 @@ const formatPrice = (val) => {
                 <button
                     type="button"
                     @click="emit('close')"
-                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer"
                 >
                     ✕
                 </button>
             </div>
 
             <!-- Modal Body (Scrollable) -->
-            <div class="p-5 overflow-y-auto space-y-5 flex-1">
+            <div class="p-3.5 sm:p-5 overflow-y-auto space-y-4 sm:space-y-5 flex-1">
                 <!-- Variations Section (if item has variations) -->
                 <div v-if="item.variations && item.variations.length > 0">
                     <label class="text-xs font-black uppercase text-slate-700 dark:text-slate-300 tracking-wider block mb-2">

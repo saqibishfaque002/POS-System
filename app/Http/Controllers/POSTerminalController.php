@@ -174,9 +174,10 @@ class POSTerminalController extends Controller
             return $floor;
         });
 
-        // Active/Held orders for this branch
+        // Held / Parked orders for this branch (strictly status = pending and unpaid)
         $activeOrders = PosOrder::where('branch_id', $branchId)
-            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->where('status', 'pending')
+            ->where('payment_status', 'unpaid')
             ->with(['items.foodItem', 'items.variation', 'items.properties', 'table', 'customer', 'orderType', 'party'])
             ->latest()
             ->take(20)
@@ -996,9 +997,13 @@ class POSTerminalController extends Controller
             $query->where('status', $request->get('status'));
         }
 
-        // Specific date filter
+        // Specific date filter (matches created_at date or assigned business day date)
         if ($request->has('date') && $request->filled('date') && $request->get('date') !== 'all') {
-            $query->whereDate('created_at', $request->get('date'));
+            $date = $request->get('date');
+            $query->where(function ($dq) use ($date) {
+                $dq->whereDate('pos_orders.created_at', $date)
+                   ->orWhereHas('businessDay', fn($bq) => $bq->whereDate('business_date', $date));
+            });
         }
 
         $orders = $query->with([

@@ -75,6 +75,18 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    isMobileView: {
+        type: Boolean,
+        default: false
+    },
+    isOrderSettled: {
+        type: Boolean,
+        default: false
+    },
+    settledOrder: {
+        type: Object,
+        default: null
+    },
 });
 
 const emit = defineEmits([
@@ -95,6 +107,9 @@ const emit = defineEmits([
     'openTableModal',
     'openCustomerModal',
     'selectOrderType',
+    'backToCatalog',
+    'startNewOrder',
+    'reprintReceipt',
 ]);
 
 const formatPrice = (val) => {
@@ -121,23 +136,38 @@ const handleOrderTypeClick = (ot) => {
 </script>
 
 <template>
-    <div class="w-80 md:w-96 lg:w-[420px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full shrink-0 select-none shadow-lg z-10">
+    <div class="w-full lg:w-80 xl:w-96 2xl:w-[420px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full select-none shadow-lg z-10">
+        <!-- Mobile Navigation Header (Shown only on mobile when viewing cart) -->
+        <div v-if="isMobileView" class="lg:hidden px-3.5 py-2.5 bg-indigo-50 dark:bg-cyan-950/60 border-b border-indigo-100 dark:border-cyan-900/60 flex items-center justify-between shrink-0">
+            <button
+                type="button"
+                @click="emit('backToCatalog')"
+                class="text-xs font-black text-indigo-700 dark:text-cyan-300 flex items-center space-x-1.5 cursor-pointer hover:underline"
+            >
+                <span class="text-base leading-none">←</span>
+                <span>Back to Menu / Add Items</span>
+            </button>
+            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                {{ cart.length }} {{ cart.length === 1 ? 'item' : 'items' }}
+            </span>
+        </div>
+
         <!-- Cart Header: Order Info, Order Type, Party & Business Date -->
         <div class="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 flex flex-col gap-2.5 shrink-0">
             <!-- Order Title & Clear button -->
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
-                    <span class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                        {{ editingOrderId ? `Order #${editingOrderId}` : 'Current Order' }}
+                    <span class="text-xs font-black uppercase tracking-wider" :class="isOrderSettled ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'">
+                        {{ isOrderSettled ? `Order #${editingOrderId} (Settled)` : (editingOrderId ? `Order #${editingOrderId}` : 'Current Order') }}
                     </span>
-                    <span v-if="tokenNumber" class="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-cyan-950 text-indigo-700 dark:text-cyan-400 border border-indigo-200 dark:border-cyan-800">
+                    <span v-if="tokenNumber" class="text-[10px] font-black px-2 py-0.5 rounded-full" :class="isOrderSettled ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-indigo-100 dark:bg-cyan-950 text-indigo-700 dark:text-cyan-400 border border-indigo-200 dark:border-cyan-800'">
                         {{ tokenNumber }}
                     </span>
                 </div>
 
-                <!-- Clear Cart Button -->
+                <!-- Clear Cart Button (Only when order is active/not settled) -->
                 <button
-                    v-if="cart.length > 0"
+                    v-if="cart.length > 0 && !isOrderSettled"
                     type="button"
                     @click="emit('clearCart')"
                     class="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 font-semibold flex items-center space-x-1 p-1 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
@@ -156,9 +186,11 @@ const handleOrderTypeClick = (ot) => {
                     v-for="ot in orderTypes"
                     :key="ot.id"
                     type="button"
-                    @click="handleOrderTypeClick(ot)"
+                    @click="!isOrderSettled && handleOrderTypeClick(ot)"
+                    :disabled="isOrderSettled"
                     :class="[
-                        'py-1.5 px-2 text-xs font-black rounded-lg transition-all flex items-center justify-center space-x-1.5 cursor-pointer',
+                        'py-1.5 px-2 text-xs font-black rounded-lg transition-all flex items-center justify-center space-x-1.5',
+                        isOrderSettled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer',
                         currentOrderTypeId == ot.id
                             ? 'bg-indigo-600 text-white shadow-xs dark:bg-cyan-600'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/60'
@@ -184,6 +216,7 @@ const handleOrderTypeClick = (ot) => {
                         placeholder="Select Party"
                         size="sm"
                         :showSearch="availableParties.length > 4"
+                        :disabled="isOrderSettled"
                     />
                 </div>
 
@@ -191,9 +224,11 @@ const handleOrderTypeClick = (ot) => {
                 <button
                     v-if="isTableRequired"
                     type="button"
-                    @click="emit('openTableModal')"
+                    @click="!isOrderSettled && emit('openTableModal')"
+                    :disabled="isOrderSettled"
                     :class="[
-                        'px-2.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center space-x-1 shrink-0 cursor-pointer',
+                        'px-2.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center space-x-1 shrink-0',
+                        isOrderSettled ? 'cursor-default opacity-80' : 'cursor-pointer',
                         selectedTable
                             ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400'
                             : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-400'
@@ -209,9 +244,11 @@ const handleOrderTypeClick = (ot) => {
                 <!-- Customer Selector Button -->
                 <button
                     type="button"
-                    @click="emit('openCustomerModal')"
+                    @click="!isOrderSettled && emit('openCustomerModal')"
+                    :disabled="isOrderSettled"
                     :class="[
-                        'px-2.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center space-x-1 shrink-0 cursor-pointer',
+                        'px-2.5 py-1.5 text-xs font-bold rounded-xl border transition-all flex items-center space-x-1 shrink-0',
+                        isOrderSettled ? 'cursor-default opacity-80' : 'cursor-pointer',
                         selectedCustomer
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400'
                             : isDelivery
@@ -241,8 +278,27 @@ const handleOrderTypeClick = (ot) => {
             </div>
         </div>
 
-        <!-- Editing Order Active Banner -->
-        <div v-if="editingOrderId" class="px-3.5 py-2 bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs text-amber-800 dark:text-amber-300 shrink-0">
+        <!-- Settled Order Active Banner -->
+        <div v-if="isOrderSettled" class="px-3.5 py-2.5 bg-emerald-50 dark:bg-emerald-950/60 border-b border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 shrink-0">
+            <span class="font-black flex items-center space-x-1.5">
+                <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Order #{{ editingOrderId }} Paid & Settled</span>
+            </span>
+            <button
+                type="button"
+                @click="emit('startNewOrder')"
+                class="font-black text-emerald-700 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-white text-[11px] px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 shadow-2xs hover:shadow-xs transition-all cursor-pointer flex items-center space-x-1"
+                title="Start a new order"
+            >
+                <span>+</span>
+                <span>New Order</span>
+            </button>
+        </div>
+
+        <!-- Editing Order Active Banner (only when active/unsettled) -->
+        <div v-else-if="editingOrderId" class="px-3.5 py-2 bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800 flex items-center justify-between text-xs text-amber-800 dark:text-amber-300 shrink-0">
             <span class="font-bold flex items-center space-x-1.5">
                 <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -289,8 +345,9 @@ const handleOrderTypeClick = (ot) => {
                         </span>
                     </div>
 
-                    <!-- Remove -->
+                    <!-- Remove (Only when order is active/not settled) -->
                     <button
+                        v-if="!isOrderSettled"
                         type="button"
                         @click="emit('removeItem', index)"
                         class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 p-0.5 text-xs transition-colors"
@@ -318,8 +375,13 @@ const handleOrderTypeClick = (ot) => {
 
                 <!-- Quantity & Price Footer -->
                 <div class="mt-2.5 flex items-center justify-between pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
-                    <!-- Quantity Stepper -->
-                    <div class="flex items-center space-x-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5">
+                    <!-- Quantity Display (Settled vs Stepper) -->
+                    <div v-if="isOrderSettled" class="px-2 py-0.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-black text-slate-800 dark:text-slate-100 flex items-center space-x-1">
+                        <span class="text-[10px] text-slate-400 font-semibold">Qty:</span>
+                        <span>{{ item.quantity }}</span>
+                    </div>
+
+                    <div v-else class="flex items-center space-x-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5">
                         <button
                             type="button"
                             @click="emit('updateQuantity', { index, delta: -1 })"
@@ -369,6 +431,7 @@ const handleOrderTypeClick = (ot) => {
                         <span>{{ selectedDiscount.name }}</span>
                         <span v-if="selectedDiscount.code" class="font-mono opacity-80">({{ selectedDiscount.code }})</span>
                         <button
+                            v-if="!isOrderSettled"
                             type="button"
                             @click="emit('removeDiscount')"
                             class="text-rose-500 hover:text-rose-700 ml-1 font-bold text-xs"
@@ -383,6 +446,7 @@ const handleOrderTypeClick = (ot) => {
                         - Rs. {{ formatPrice(discountAmount) }}
                     </span>
                     <button
+                        v-if="!isOrderSettled"
                         type="button"
                         @click="emit('openDiscountModal')"
                         class="text-[11px] font-bold text-indigo-600 dark:text-cyan-400 hover:underline px-1 py-0.5"
@@ -420,8 +484,9 @@ const handleOrderTypeClick = (ot) => {
                             min="0"
                             step="10"
                             :value="deliveryCharges"
+                            :disabled="isOrderSettled"
                             @input="emit('update:deliveryCharges', Number($event.target.value))"
-                            class="w-20 text-right text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                            class="w-20 text-right text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 disabled:opacity-70 disabled:cursor-not-allowed"
                             placeholder="0"
                         />
                     </div>
@@ -431,16 +496,18 @@ const handleOrderTypeClick = (ot) => {
                     <input
                         type="text"
                         :value="riderName"
+                        :disabled="isOrderSettled"
                         @input="emit('update:riderName', $event.target.value)"
                         placeholder="Rider / Courier..."
-                        class="text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-indigo-500"
+                        class="text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed"
                     />
                     <input
                         type="text"
                         :value="deliveryAddress"
+                        :disabled="isOrderSettled"
                         @input="emit('update:deliveryAddress', $event.target.value)"
                         placeholder="Delivery address..."
-                        class="text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-indigo-500"
+                        class="text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed"
                     />
                 </div>
             </div>
@@ -451,14 +518,54 @@ const handleOrderTypeClick = (ot) => {
                 <span class="font-bold text-slate-800 dark:text-slate-200">+ Rs. {{ formatPrice(deliveryCharges) }}</span>
             </div>
 
+            <!-- Payment Information Breakdown (Visible when order is settled) -->
+            <div v-if="isOrderSettled && (settledOrder?.payments?.length || settledOrder?.payment_status === 'paid')" class="p-2.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 space-y-1.5 text-xs">
+                <div class="flex items-center justify-between font-black text-emerald-800 dark:text-emerald-300 border-b border-emerald-200/60 dark:border-emerald-800/60 pb-1">
+                    <span class="flex items-center space-x-1">
+                        <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span>Payment Details</span>
+                    </span>
+                    <span class="text-[10px] font-black uppercase tracking-wider bg-emerald-200/80 dark:bg-emerald-900 px-1.5 py-0.5 rounded text-emerald-900 dark:text-emerald-200">
+                        Paid In Full
+                    </span>
+                </div>
+
+                <!-- Payments list -->
+                <div v-if="settledOrder?.payments && settledOrder.payments.length > 0" class="space-y-1">
+                    <div
+                        v-for="pay in settledOrder.payments"
+                        :key="pay.id"
+                        class="flex items-center justify-between text-slate-700 dark:text-slate-300 py-0.5 text-[11px]"
+                    >
+                        <div>
+                            <span class="font-bold">{{ pay.payment_type?.name || 'Payment' }}</span>
+                            <span v-if="pay.card_last_four" class="text-[10px] text-slate-400 font-mono ml-1">•••• {{ pay.card_last_four }}</span>
+                            <span v-if="pay.card_bank" class="text-[10px] text-slate-400 ml-1">({{ pay.card_bank }})</span>
+                            <span v-if="pay.transaction_reference" class="text-[10px] text-slate-400 font-mono ml-1">Ref: {{ pay.transaction_reference }}</span>
+                        </div>
+                        <span class="font-black text-emerald-600 dark:text-emerald-400">Rs. {{ formatPrice(pay.amount) }}</span>
+                    </div>
+                </div>
+
+                <!-- Tendered & Change -->
+                <div v-if="settledOrder?.tendered_amount > 0" class="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-emerald-200/40 dark:border-emerald-800/40 font-medium">
+                    <span>Tendered: <strong class="text-slate-700 dark:text-slate-300">Rs. {{ formatPrice(settledOrder.tendered_amount) }}</strong></span>
+                    <span v-if="settledOrder.change_amount > 0" class="font-bold text-amber-700 dark:text-amber-400">
+                        Change: Rs. {{ formatPrice(settledOrder.change_amount) }}
+                    </span>
+                </div>
+            </div>
+
             <!-- Grand Total -->
             <div class="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                    <span class="text-xs font-black uppercase text-slate-800 dark:text-slate-200">Payable Total</span>
-                    <p class="text-[10px] text-slate-400">Inclusive of taxes & charges</p>
+                    <span class="text-xs font-black uppercase text-slate-800 dark:text-slate-200">{{ isOrderSettled ? 'Settled Total' : 'Payable Total' }}</span>
+                    <p class="text-[10px] text-slate-400">{{ isOrderSettled ? 'Order completed & paid' : 'Inclusive of taxes & charges' }}</p>
                 </div>
                 <div class="text-right">
-                    <span class="text-lg font-black text-indigo-600 dark:text-cyan-400">
+                    <span class="text-lg font-black" :class="isOrderSettled ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-cyan-400'">
                         <span class="text-xs font-bold mr-0.5">Rs.</span>
                         <span>{{ formatPrice(grandTotal) }}</span>
                     </span>
@@ -466,8 +573,36 @@ const handleOrderTypeClick = (ot) => {
             </div>
         </div>
 
-        <!-- Action Buttons Footer (4 Primary Order Actions) -->
-        <div class="p-2.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 grid grid-cols-4 gap-1.5 shrink-0">
+        <!-- Action Buttons Footer (4 Primary Order Actions or Settled Actions) -->
+        <div v-if="isOrderSettled" class="p-2.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-2 shrink-0">
+            <!-- 1. Reprint Receipt -->
+            <button
+                type="button"
+                @click="emit('reprintReceipt')"
+                class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer shadow-2xs"
+                title="Reprint Thermal Receipt / Invoice"
+            >
+                <svg class="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                <span>Reprint Receipt</span>
+            </button>
+
+            <!-- 2. Start New Order -->
+            <button
+                type="button"
+                @click="emit('startNewOrder')"
+                class="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-all cursor-pointer shadow-md active:scale-95"
+                title="Clear and Start a New Order"
+            >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>New Order</span>
+            </button>
+        </div>
+
+        <div v-else class="p-2.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 grid grid-cols-4 gap-1.5 shrink-0">
             <!-- 1. Hold / Park -->
             <button
                 type="button"

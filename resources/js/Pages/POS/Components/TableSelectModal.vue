@@ -29,21 +29,21 @@ const formatPrice = (val) => {
 </script>
 
 <template>
-    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs select-none">
-        <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
+    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/60 backdrop-blur-xs select-none">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
             <!-- Modal Header -->
-            <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
+            <div class="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
                 <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-cyan-950/60 text-indigo-600 dark:text-cyan-400 flex items-center justify-center font-bold">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-cyan-950/60 text-indigo-600 dark:text-cyan-400 flex items-center justify-center font-bold shrink-0">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-sm font-black text-slate-900 dark:text-white">
+                        <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
                             Floor & Table Layout
                         </h3>
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                        <p class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
                             Select a table for Dine-in or resume an occupied table
                         </p>
                     </div>
@@ -51,21 +51,21 @@ const formatPrice = (val) => {
                 <button
                     type="button"
                     @click="emit('close')"
-                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg text-sm"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg text-sm cursor-pointer"
                 >
                     ✕
                 </button>
             </div>
 
             <!-- Floor Tabs -->
-            <div class="px-5 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center space-x-2 overflow-x-auto">
+            <div class="px-3.5 sm:px-5 py-2 sm:py-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center space-x-2 overflow-x-auto">
                 <button
                     v-for="floor in floors"
                     :key="floor.id"
                     type="button"
                     @click="activeFloorId = floor.id"
                     :class="[
-                        'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0',
+                        'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer',
                         currentFloor?.id == floor.id
                             ? 'bg-indigo-600 dark:bg-cyan-600 text-white shadow-xs'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
@@ -76,12 +76,12 @@ const formatPrice = (val) => {
             </div>
 
             <!-- Tables Grid -->
-            <div class="p-5 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-950">
+            <div class="p-3 sm:p-5 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-950">
                 <div v-if="!currentFloor || !currentFloor.tables || currentFloor.tables.length === 0" class="h-48 flex flex-col items-center justify-center text-slate-400">
                     <p class="text-xs font-bold">No tables found on this floor</p>
                 </div>
 
-                <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
                     <div
                         v-for="table in currentFloor.tables"
                         :key="table.id"

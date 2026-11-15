@@ -31,21 +31,21 @@ const formatPrice = (val) => {
 </script>
 
 <template>
-    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs select-none">
-        <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
+    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/60 backdrop-blur-xs select-none">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
             <!-- Modal Header -->
-            <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
+            <div class="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40">
                 <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-sm font-black text-slate-900 dark:text-white">
+                        <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
                             Active & Parked Orders ({{ orders.length }})
                         </h3>
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                        <p class="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
                             Resume a parked order or cancel an active ticket
                         </p>
                     </div>
@@ -53,14 +53,14 @@ const formatPrice = (val) => {
                 <button
                     type="button"
                     @click="emit('close')"
-                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg text-sm"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg text-sm cursor-pointer"
                 >
                     ✕
                 </button>
             </div>
 
             <!-- Orders List -->
-            <div class="p-5 overflow-y-auto flex-1 space-y-3 bg-slate-50 dark:bg-slate-950">
+            <div class="p-3 sm:p-5 overflow-y-auto flex-1 space-y-3 bg-slate-50 dark:bg-slate-950">
                 <div v-if="orders.length === 0" class="py-12 text-center text-slate-400 text-xs">
                     No active or held orders at this branch right now.
                 </div>

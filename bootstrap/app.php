@@ -17,6 +17,18 @@ $app = new Illuminate\Foundation\Application(
 
 /*
 |--------------------------------------------------------------------------
+| Serverless / Vercel Environment Storage Path
+|--------------------------------------------------------------------------
+| When running on Vercel or ephemeral serverless environments, the root
+| filesystem is read-only. We redirect writable storage to /tmp/storage.
+*/
+if (isset($_SERVER['VERCEL']) || isset($_ENV['VERCEL']) || env('VERCEL') || env('APP_RUNNING_IN_SERVERLESS')) {
+    $storagePath = '/tmp/storage';
+    $app->useStoragePath($storagePath);
+}
+
+/*
+|--------------------------------------------------------------------------
 | Bind Important Interfaces
 |--------------------------------------------------------------------------
 |
