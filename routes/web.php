@@ -236,6 +236,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
+// routes/web.php
+Route::get('/run-migrations', function () {
+    if (request('key') !== 'my-secret-key-123') {
+        abort(403, 'Unauthorized');
+    }
+    
+    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+    
+    return response()->json([
+        'status' => 'success',
+        'output' => \Illuminate\Support\Facades\Artisan::output(),
+    ]);
+});
+
 Route::get('/', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
